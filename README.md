@@ -24,8 +24,11 @@ YakıtRotam; Türkiye'deki araç sürücülerinin depo kapasitesi, ortalama yak�
 5. **Uygulama İçi İnteraktif Rota & Durak Zaman Çizelgesi:**
    * Her durak için: Varış anındaki kalan yakıt yüzdesi (%), depoyu fullemek için gereken litre, tahmini maliyet (₺) ve ana yoldan sapma mesafesi (km).
    * İnteraktif rota harita önizlemesi.
-6. **Çevrimdışı Çalışabilirlik:**
-   * O-4 (İstanbul-Ankara), O-5 (İstanbul-İzmir), O-21 (Ankara-Niğde), O-31 (İzmir-Aydın) ve ana devlet yollarını içeren gömülü istasyon veritabanı. İnternet olduğunda OSRM ile canlı rota çizer, internet yokken dahili otoyol koridoruyla kesintisiz çalışır.
+6. **Canlı Veri (anahtarsız, ücretsiz):**
+   * İstasyonlar her rota için OpenStreetMap Overpass API'sinden çekilir; gömülü/statik istasyon listesi yoktur, bu yüzden gerçekte var olmayan bir konuma durak konmaz.
+   * Pompa fiyatları Opet'in herkese açık il bazlı fiyat servisinden alınır. Otogaz (LPG) yayınlanmadığı için benzine oranlanarak tahmin edilir ve arayüzde "tahmini" olarak işaretlenir.
+   * Rota OSRM'den gelir; ağ yoksa dahili otoyol koridoru devreye girer.
+   * Google Maps/Places API kullanılmaz (ücretli). Konum araması Photon, ters kodlama Nominatim üzerindendir.
 
 ---
 
@@ -34,9 +37,9 @@ YakıtRotam; Türkiye'deki araç sürücülerinin depo kapasitesi, ortalama yak�
 * **Dil:** Kotlin 1.9.23 / Modern Android
 * **Arayüz (UI):** Jetpack Compose + Material 3 (Otomotiv odaklı koyu tema)
 * **Mimari:** Clean Architecture + MVVM (ViewModel, StateFlow, Repository, Domain Engine)
-* **Konum Arama:** Google Places SDK (anlık autocomplete) + anahtar yoksa OpenStreetMap yedeği
+* **Konum Arama:** Photon (OpenStreetMap tabanlı autocomplete) + Nominatim ters kodlama — API anahtarı gerekmez
 * **Ağ:** OkHttp + Kotlinx Serialization
-* **Veri:** Gömülü Türkiye Akaryakıt İstasyonları Veritabanı (`turkey_gas_stations.json`) + OSRM Routing Engine
+* **Veri:** OpenStreetMap Overpass (istasyonlar, ODbL) + Opet fiyat servisi (pompa fiyatları) + OSRM (rota)
 
 ---
 
@@ -47,14 +50,13 @@ appidea/
 ├── app/
 │   ├── src/
 │   │   ├── main/
-│   │   │   ├── assets/
-│   │   │   │   └── turkey_gas_stations.json     # Otoyol & ana arter istasyon veri seti
 │   │   │   ├── java/com/yakitrotam/app/
 │   │   │   │   ├── MainActivity.kt             # Ana Activity ve ekran yönlendirici
 │   │   │   │   ├── data/
 │   │   │   │   │   ├── model/
 │   │   │   │   │   │   ├── FuelBrand.kt        # Markalar, renkler, kimlikler
-│   │   │   │   │   │   ├── FuelType.kt         # Benzin, Dizel, LPG ve fiyatlar
+│   │   │   │   │   │   ├── FuelType.kt         # Benzin, Dizel, LPG ve yedek fiyatlar
+│   │   │   │   │   │   ├── FuelPriceSnapshot.kt # Canlı pompa fiyatı anlık görüntüsü
 │   │   │   │   │   │   ├── VehicleProfile.kt   # Depo, tüketim ve menzil formülleri
 │   │   │   │   │   │   ├── GasStation.kt       # İstasyon özellikleri ve koordinatlar
 │   │   │   │   │   │   └── TripModels.kt       # Duraklar, hesaplanan seyahat özeti
@@ -89,15 +91,9 @@ appidea/
 1. **Android Studio**'yu açın.
 2. `Open` seçeneği ile `d:\appidea` klasörünü seçin.
 3. Android Studio Gradle senkronizasyonunu otomatik tamamlayacaktır.
-4. Google Maps konum aramasını açmak için Google Cloud Console'da **Places API**'yi etkinleştirin ve faturalandırmayı bağlayın.
-5. API anahtarını Git'e eklenmeyen `local.properties` dosyasına yazın:
-   ```properties
-   MAPS_API_KEY=google_cloud_api_anahtariniz
-   ```
-6. Anahtarı güvenlik için Android uygulamasıyla (`com.yakitrotam.app` + SHA-1) ve yalnızca Places API ile sınırlandırın.
-7. Bir Android emülatör veya USB ile bağlı gerçek Android cihaz seçip **Run ('app')** butonuna basın.
+4. Bir Android emülatör veya USB ile bağlı gerçek Android cihaz seçip **Run ('app')** butonuna basın.
 
-> `MAPS_API_KEY` tanımlı değilse uygulama kapanmaz; konum araması OpenStreetMap ve yerel popüler noktalar üzerinden devam eder.
+> Hiçbir API anahtarı gerekmez. İstasyon, fiyat, rota ve adres araması için kullanılan servislerin tamamı ücretsiz ve anahtarsızdır; uygulamanın internet erişimi olması yeterlidir.
 
 ---
 
@@ -119,8 +115,6 @@ https://github.com/ziewenn/yakitrotam/releases/latest
 Telefonda GitHub sürümlerini takip ederek güncelleme bildirimi almak için [Obtainium](https://github.com/ImranR98/Obtainium) kullanılabilir. Kaynak adresi olarak bu reponun URL'sini eklemek yeterlidir. Android güvenlik modeli nedeniyle mağaza dışı normal uygulamalar sessiz kurulum yapamaz; güncellemede Android'in kurulum onayı gösterilir.
 
 CI imza anahtarının yerel kurtarma kopyası `D:\\YakitRotam-signing-backup` klasöründedir. Bu klasör gizli tutulmalı ve güvenli bir harici konuma yedeklenmelidir. Anahtar kaybolursa daha önce yüklenen APK'nın üstüne güncelleme kurulamaz.
-
-Google Places aramasının yayın APK'sında çalışması için repo ayarlarında `MAPS_API_KEY` adlı Actions secret tanımlanmalıdır. Anahtar yoksa uygulama OpenStreetMap aramasına geri döner.
 
 ---
 

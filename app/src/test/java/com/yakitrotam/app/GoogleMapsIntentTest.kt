@@ -35,13 +35,17 @@ class GoogleMapsIntentTest {
             origin = origin,
             destination = destination,
             totalDistanceKm = 680.0,
+            totalDrivenDistanceKm = 680.4,
             estimatedDrivingTimeMinutes = 440,
             stops = listOf(stop1),
             totalFuelConsumedLiters = 45.0,
-            totalEstimatedCostTL = 1950.0,
+            totalEstimatedCostTL = 3607.2,
+            totalRefuelCostTL = 3446.9,
+            arrivalFuelLiters = 12.0,
             routePoints = emptyList(),
             vehicleProfile = VehicleProfile(),
-            preferredBrands = setOf(FuelBrand.SHELL)
+            preferredBrands = setOf(FuelBrand.SHELL),
+            fuelPrice = FuelPriceSnapshot.fallback()
         )
 
         val url = tripResult.googleMapsUrl

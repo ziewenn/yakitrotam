@@ -1,16 +1,9 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
 }
 
-val localProperties = Properties().apply {
-    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
-}
-val mapsApiKey = providers.gradleProperty("MAPS_API_KEY")
-    .orElse(localProperties.getProperty("MAPS_API_KEY", ""))
 val ciBuildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
 val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")
 val releaseStorePassword = System.getenv("RELEASE_STORE_PASSWORD")
@@ -27,8 +20,6 @@ android {
         targetSdk = 34
         versionCode = ciBuildNumber ?: 1
         versionName = ciBuildNumber?.let { "1.0.$it" } ?: "1.0.0"
-        buildConfigField("String", "MAPS_API_KEY", "\"${mapsApiKey.get()}\"")
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -75,6 +66,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"
     }
+    testOptions {
+        unitTests.all {
+            it.testLogging { showStandardStreams = true }
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -99,7 +95,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.play.services.location)
-    implementation(libs.google.places)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

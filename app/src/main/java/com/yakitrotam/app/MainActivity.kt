@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val stationRepo = GasStationRepository(applicationContext)
+                val stationRepo = GasStationRepository()
                 val routeRepo = RouteRepository()
                 val optimizer = FuelOptimizerEngine(stationRepo)
                 val locationService = LocationService(routeRepo, applicationContext)

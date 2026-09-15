@@ -3,6 +3,12 @@ package com.yakitrotam.app.util
 import com.yakitrotam.app.data.model.LatLng
 import kotlin.math.*
 
+/** Bir noktanın rota üzerindeki izdüşümü: rota başından kaç km ileride ve rotadan kaç km uzakta. */
+data class RouteProjection(
+    val alongKm: Double,
+    val detourKm: Double
+)
+
 object GeoUtils {
     private const val EARTH_RADIUS_KM = 6371.0
 
@@ -33,6 +39,18 @@ object GeoUtils {
     }
 
     /**
+     * Rota noktalarının başlangıçtan itibaren kümülatif mesafelerini (km) döndürür.
+     * Çok sayıda istasyonu aynı rotaya izdüşürürken bir kez hesaplanıp tekrar kullanılır.
+     */
+    fun cumulativeDistancesKm(points: List<LatLng>): DoubleArray {
+        val cumulative = DoubleArray(points.size)
+        for (i in 1 until points.size) {
+            cumulative[i] = cumulative[i - 1] + distanceKm(points[i - 1], points[i])
+        }
+        return cumulative
+    }
+
+    /**
      * Rota boyunca belirli bir kümülatif mesafeye (km) ulaşıldığındaki yaklaşık koordinatı bulur.
      */
     fun findPointAtDistance(points: List<LatLng>, targetDistanceKm: Double): LatLng {
@@ -44,31 +62,41 @@ object GeoUtils {
             val segmentDist = distanceKm(points[i], points[i + 1])
             if (accumulated + segmentDist >= targetDistanceKm) {
                 val fraction = if (segmentDist > 0) (targetDistanceKm - accumulated) / segmentDist else 0.0
-                val interpLat = points[i].latitude + fraction * (points[i + 1].latitude - points[i].latitude)
-                val interpLng = points[i].longitude + fraction * (points[i + 1].longitude - points[i].longitude)
-                return LatLng(interpLat, interpLng)
+                return interpolate(points[i], points[i + 1], fraction)
             }
             accumulated += segmentDist
         }
         return points.last()
     }
 
+    fun interpolate(from: LatLng, to: LatLng, fraction: Double): LatLng = LatLng(
+        from.latitude + fraction * (to.latitude - from.latitude),
+        from.longitude + fraction * (to.longitude - from.longitude)
+    )
+
     /**
-     * Bir noktanın bir doğru parçasına (rota segmentine) olan en kısa mesafesini (cross-track distance) yaklaşık hesaplar.
+     * Noktanın segment üzerindeki izdüşüm oranı (0..1).
+     * Boylam dereceleri enleme göre daralır; km cinsine çevirmeden hesaplamak
+     * Türkiye enlemlerinde (~39°) %22'ye varan izdüşüm hatası üretir.
+     */
+    private fun projectionFraction(point: LatLng, segStart: LatLng, segEnd: LatLng): Double {
+        val lonScale = cos(Math.toRadians((segStart.latitude + segEnd.latitude) / 2.0))
+        val dx = (segEnd.longitude - segStart.longitude) * lonScale
+        val dy = segEnd.latitude - segStart.latitude
+        val lengthSquared = dx * dx + dy * dy
+        if (lengthSquared == 0.0) return 0.0
+
+        val px = (point.longitude - segStart.longitude) * lonScale
+        val py = point.latitude - segStart.latitude
+        return ((px * dx + py * dy) / lengthSquared).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * Bir noktanın bir doğru parçasına (rota segmentine) olan en kısa mesafesi (km).
      */
     fun distanceToSegmentKm(point: LatLng, segStart: LatLng, segEnd: LatLng): Double {
-        val l2 = distanceKm(segStart, segEnd).pow(2)
-        if (l2 == 0.0) return distanceKm(point, segStart)
-
-        // İzdüşüm faktörü t
-        val t = (((point.latitude - segStart.latitude) * (segEnd.latitude - segStart.latitude) +
-                (point.longitude - segStart.longitude) * (segEnd.longitude - segStart.longitude)) /
-                ((segEnd.latitude - segStart.latitude).pow(2) + (segEnd.longitude - segStart.longitude).pow(2)))
-            .coerceIn(0.0, 1.0)
-
-        val projLat = segStart.latitude + t * (segEnd.latitude - segStart.latitude)
-        val projLng = segStart.longitude + t * (segEnd.longitude - segStart.longitude)
-        return distanceKm(point, LatLng(projLat, projLng))
+        val t = projectionFraction(point, segStart, segEnd)
+        return distanceKm(point, interpolate(segStart, segEnd, t))
     }
 
     /**
@@ -81,10 +109,38 @@ object GeoUtils {
         var minDistance = Double.MAX_VALUE
         for (i in 0 until route.size - 1) {
             val d = distanceToSegmentKm(point, route[i], route[i + 1])
-            if (d < minDistance) {
-                minDistance = d
-            }
+            if (d < minDistance) minDistance = d
         }
         return minDistance
+    }
+
+    /**
+     * Noktayı rotaya izdüşürür: rotanın başından kaç km sonra geldiğini ve
+     * rotadan kaç km saptığını birlikte döndürür.
+     *
+     * [cumulative] verilmezse rota için yeniden hesaplanır.
+     */
+    fun projectOntoRoute(
+        point: LatLng,
+        route: List<LatLng>,
+        cumulative: DoubleArray = cumulativeDistancesKm(route)
+    ): RouteProjection {
+        if (route.isEmpty()) return RouteProjection(0.0, Double.MAX_VALUE)
+        if (route.size == 1) return RouteProjection(0.0, distanceKm(point, route.first()))
+
+        var bestDetour = Double.MAX_VALUE
+        var bestAlong = 0.0
+
+        for (i in 0 until route.size - 1) {
+            val t = projectionFraction(point, route[i], route[i + 1])
+            val projected = interpolate(route[i], route[i + 1], t)
+            val detour = distanceKm(point, projected)
+            if (detour < bestDetour) {
+                bestDetour = detour
+                val segmentLength = cumulative[i + 1] - cumulative[i]
+                bestAlong = cumulative[i] + t * segmentLength
+            }
+        }
+        return RouteProjection(bestAlong, bestDetour)
     }
 }

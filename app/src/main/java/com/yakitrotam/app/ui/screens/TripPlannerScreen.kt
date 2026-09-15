@@ -6,34 +6,73 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.PlaceSuggestion
 import com.yakitrotam.app.data.model.VehicleProfile
 import com.yakitrotam.app.ui.components.BrandFilterBar
 import com.yakitrotam.app.ui.components.FuelGaugeCard
+import com.yakitrotam.app.ui.components.FuelPriceStrip
 import com.yakitrotam.app.ui.components.PlaceSearchDialog
-import com.yakitrotam.app.ui.theme.*
+import com.yakitrotam.app.ui.components.SectionCard
+import com.yakitrotam.app.ui.theme.AccentLime
+import com.yakitrotam.app.ui.theme.DarkBackground
+import com.yakitrotam.app.ui.theme.DarkBorder
+import com.yakitrotam.app.ui.theme.DarkSurface
+import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.HeroGradientEnd
+import com.yakitrotam.app.ui.theme.HeroGradientMid
+import com.yakitrotam.app.ui.theme.HeroGradientStart
+import com.yakitrotam.app.ui.theme.ReserveRed
+import com.yakitrotam.app.ui.theme.SafeGreen
+import com.yakitrotam.app.ui.theme.TextMuted
+import com.yakitrotam.app.ui.theme.TextPrimary
+import com.yakitrotam.app.ui.theme.TextSecondary
 import com.yakitrotam.app.ui.viewmodel.TripUiState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripPlannerScreen(
     uiState: TripUiState,
@@ -52,313 +91,127 @@ fun TripPlannerScreen(
     var showOriginSearch by remember { mutableStateOf(false) }
     var showDestinationSearch by remember { mutableStateOf(false) }
 
-
-    // Konum izni isteği başlatıcı
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                      permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
-            onUseCurrentLocation()
-        }
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) onUseCurrentLocation()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Uygulamanın amacını tek bakışta anlatan sürüş paneli
-        Box(
+    Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(PrimaryBlueVariant, DarkSurfaceVariant, DarkSurface)
-                    )
-                )
-                .padding(20.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Surface(
-                    color = TextPrimary.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text(
-                        text = "AKILLI YAKIT PLANLAYICI",
-                        color = PrimaryBlueSoft,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(48.dp).clip(CircleShape)
-                            .background(TextPrimary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.DirectionsCar, null, tint = TextPrimary, modifier = Modifier.size(27.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            "YakıtRotam",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Daha az sapma, doğru zamanda yakıt molası",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                    }
-                }
-            }
-        }
+            PlannerHero()
 
-        // Kalkış & Varış Noktası Seçim Kartı (Google Maps Arama Stili)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Rotanı oluştur",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextPrimary
-                    )
-
-                    // Hızlı GPS Butonu
-                    TextButton(
-                        onClick = {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        },
-                        enabled = !uiState.isLocationLoading,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        if (uiState.isLocationLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                color = PrimaryBlue,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.MyLocation,
-                                contentDescription = null,
-                                tint = PrimaryBlue,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text(
-                            text = if (uiState.isLocationLoading) "Konum Alınıyor..." else "Konumumu Kullan",
-                            color = PrimaryBlue,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                // Kalkış Noktası Arama Alanı
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
-                        .clickable { showOriginSearch = true }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(SafeGreen)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "NEREDEN",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = TextMuted,
-                            fontSize = 10.sp
-                        )
-                        Text(
-                            text = uiState.origin.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
-                            maxLines = 1
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Ara",
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Değiştir (Swap) Butonu
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    HorizontalDivider(color = DarkBorder, thickness = 0.5.dp)
-                    IconButton(
-                        onClick = onSwapLocations,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(DarkSurface)
-                            .border(1.dp, DarkBorder, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SwapVert,
-                            contentDescription = "Değiştir",
-                            tint = PrimaryBlue,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Varış Noktası Arama Alanı
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
-                        .clickable { showDestinationSearch = true }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(ReserveRed)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "NEREYE",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = TextMuted,
-                            fontSize = 10.sp
-                        )
-                        Text(
-                            text = uiState.destination.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
-                            maxLines = 1
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Ara",
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-
-        // Araç Depo Hacmi, Kalan Yüzde ve 100km Tüketim Giriş Kartı
-        FuelGaugeCard(
-            vehicleProfile = uiState.vehicleProfile,
-            onUpdateProfile = onUpdateProfile
-        )
-
-        // Tercih Edilen Akaryakıt Markaları Seçimi (Shell, Opet, PO vb.)
-        BrandFilterBar(
-            selectedBrands = uiState.selectedBrands,
-            onToggleBrand = onToggleBrand,
-            onSelectAll = onSelectAllBrands
-        )
-
-        // Hata Mesajı varsa göster
-        if (uiState.errorMessage != null) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = ReserveRed.copy(alpha = 0.15f)),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(ReserveRed))
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = ReserveRed)
-                    Text(text = uiState.errorMessage, color = TextPrimary, fontSize = 13.sp)
-                }
-            }
-        }
-
-        // Ana Hesaplama Butonu
-        Button(
-            onClick = onCalculateTrip,
-            enabled = !uiState.isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = PrimaryBlue,
-                contentColor = TextPrimary
+            FuelPriceStrip(
+                snapshot = uiState.livePrice,
+                selectedFuelType = uiState.vehicleProfile.fuelType
             )
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    color = TextPrimary,
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.5.dp
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(text = "Optimum Benzinlik Durakları Hesaplanıyor...", fontSize = 15.sp)
-            } else {
-                Icon(imageVector = Icons.Default.Route, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "En uygun rotayı planla",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = 16.sp
-                )
+
+            RouteSelectionCard(
+                uiState = uiState,
+                onOriginClick = { showOriginSearch = true },
+                onDestinationClick = { showDestinationSearch = true },
+                onSwapLocations = onSwapLocations,
+                onRequestLocation = {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+            )
+
+            FuelGaugeCard(
+                vehicleProfile = uiState.vehicleProfile,
+                onUpdateProfile = onUpdateProfile
+            )
+
+            BrandFilterBar(
+                selectedBrands = uiState.selectedBrands,
+                onToggleBrand = onToggleBrand,
+                onSelectAll = onSelectAllBrands
+            )
+
+            uiState.errorMessage?.let { message ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ReserveRed.copy(alpha = 0.12f))
+                        .border(1.dp, ReserveRed.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Default.Warning, null, tint = ReserveRed, modifier = Modifier.size(20.dp))
+                    Text(message, color = TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                }
             }
+
+            Spacer(Modifier.height(96.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Ana eylem her zaman parmağın altında kalsın diye ekrana sabit.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, DarkBackground, DarkBackground)
+                    )
+                )
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Button(
+                onClick = onCalculateTrip,
+                enabled = !uiState.isLoading,
+                modifier = Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentLime,
+                    contentColor = Color.Black,
+                    disabledContainerColor = DarkSurfaceVariant,
+                    disabledContentColor = TextPrimary
+                )
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        color = AccentLime,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = uiState.loadingStep.ifBlank { "Hesaplanıyor..." },
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Icon(Icons.Default.Route, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(9.dp))
+                    Text("Yakıt planımı oluştur", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
     }
 
-    // Google Maps Tarzı Canlı Arama Modalleri
     if (showOriginSearch) {
         PlaceSearchDialog(
-            title = "Kalkış Noktası Ara",
+            title = "Kalkış noktası",
             isOriginSearch = true,
-            onSelectPlace = {
-                onSelectOrigin(it)
-            },
+            onSelectPlace = onSelectOrigin,
             onUseCurrentLocation = {
                 locationPermissionLauncher.launch(
                     arrayOf(
@@ -375,14 +228,160 @@ fun TripPlannerScreen(
 
     if (showDestinationSearch) {
         PlaceSearchDialog(
-            title = "Varış Noktası Ara",
+            title = "Varış noktası",
             isOriginSearch = false,
-            onSelectPlace = {
-                onSelectDestination(it)
-            },
+            onSelectPlace = onSelectDestination,
             onSearchQueryChanged = onSearchPlaces,
             onResolvePlace = onResolvePlace,
             onDismiss = { showDestinationSearch = false }
         )
+    }
+}
+
+@Composable
+private fun PlannerHero() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.linearGradient(listOf(HeroGradientStart, HeroGradientMid, HeroGradientEnd))
+            )
+            .border(1.dp, DarkBorder, RoundedCornerShape(26.dp))
+            .padding(20.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(AccentLime),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.LocalGasStation,
+                        null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        "YakıtRotam",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        "Gerçek istasyonlar, güncel fiyatlar",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextSecondary
+                    )
+                }
+            }
+            Text(
+                "Rotanı gir, deponu söyle; nerede ve ne kadar yakıt alman gerektiğini hesaplayalım.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextMuted
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouteSelectionCard(
+    uiState: TripUiState,
+    onOriginClick: () -> Unit,
+    onDestinationClick: () -> Unit,
+    onSwapLocations: () -> Unit,
+    onRequestLocation: () -> Unit
+) {
+    SectionCard(
+        title = "Güzergah",
+        icon = Icons.Default.Route,
+        trailing = {
+            TextButton(onClick = onRequestLocation, enabled = !uiState.isLocationLoading) {
+                if (uiState.isLocationLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(13.dp),
+                        color = AccentLime,
+                        strokeWidth = 1.5.dp
+                    )
+                } else {
+                    Icon(Icons.Default.MyLocation, null, tint = AccentLime, modifier = Modifier.size(15.dp))
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = if (uiState.isLocationLoading) "ALINIYOR" else "KONUMUM",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AccentLime
+                )
+            }
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LocationRow(
+                    label = "Nereden",
+                    value = uiState.origin.name,
+                    dotColor = SafeGreen,
+                    onClick = onOriginClick
+                )
+                LocationRow(
+                    label = "Nereye",
+                    value = uiState.destination.name,
+                    dotColor = ReserveRed,
+                    onClick = onDestinationClick
+                )
+            }
+            IconButton(
+                onClick = onSwapLocations,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(DarkSurface)
+                    .border(1.dp, DarkBorder, CircleShape)
+            ) {
+                Icon(Icons.Default.SwapVert, "Yön değiştir", tint = AccentLime, modifier = Modifier.size(19.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationRow(
+    label: String,
+    value: String,
+    dotColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(15.dp))
+            .background(DarkSurfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(start = 14.dp, end = 10.dp, top = 13.dp, bottom = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(dotColor))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        // Sağdaki takas butonuna yer aç
+        Spacer(Modifier.width(34.dp))
     }
 }

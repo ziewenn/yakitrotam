@@ -122,7 +122,7 @@ fun PlaceSearchDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
                         Text(
-                            "Google Maps konumlarında ara",
+                            "OpenStreetMap üzerinde adres ara",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
@@ -207,8 +207,8 @@ fun PlaceSearchDialog(
                         color = TextMuted,
                         letterSpacing = 0.8.sp
                     )
-                    if (searchResults.any { it.source == PlaceSource.GOOGLE }) {
-                        Text("Powered by Google", color = TextSecondary, fontSize = 11.sp)
+                    if (searchResults.any { it.source == PlaceSource.OPEN_STREET_MAP }) {
+                        Text("© OpenStreetMap", color = TextMuted, fontSize = 10.sp)
                     }
                 }
 

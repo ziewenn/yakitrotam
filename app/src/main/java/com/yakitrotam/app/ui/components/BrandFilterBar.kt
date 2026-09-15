@@ -3,20 +3,35 @@ package com.yakitrotam.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.yakitrotam.app.data.model.FuelBrand
-import com.yakitrotam.app.ui.theme.*
+import com.yakitrotam.app.ui.theme.AccentLime
+import com.yakitrotam.app.ui.theme.DarkBorder
+import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.TextMuted
+import com.yakitrotam.app.ui.theme.TextPrimary
+import com.yakitrotam.app.ui.theme.TextSecondary
 
 @Composable
 fun BrandFilterBar(
@@ -25,88 +40,77 @@ fun BrandFilterBar(
     onSelectAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val supportedBrands = listOf(
-        FuelBrand.SHELL,
-        FuelBrand.OPET,
-        FuelBrand.PETROL_OFISI,
-        FuelBrand.BP,
-        FuelBrand.TOTAL,
-        FuelBrand.AYTEMIZ,
-        FuelBrand.TP
-    )
+    val supportedBrands = FuelBrand.entries.filter { it != FuelBrand.DIGER }
 
-    Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(DarkSurface)
-                .border(1.dp, DarkBorder, RoundedCornerShape(24.dp))
-                .padding(18.dp)
-        ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "İstasyon tercihleri",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
-            )
-
-            TextButton(onClick = onSelectAll) {
+    SectionCard(
+        modifier = modifier,
+        title = "Marka tercihi",
+        icon = Icons.Default.LocalGasStation,
+        trailing = {
+            TextButton(onClick = onSelectAll, enabled = selectedBrands.isNotEmpty()) {
                 Text(
-                    text = if (selectedBrands.isEmpty()) "Tümü Seçili" else "Tümünü Seç",
+                    text = if (selectedBrands.isEmpty()) "TÜMÜ" else "SIFIRLA",
                     style = MaterialTheme.typography.labelLarge,
-                    color = PrimaryBlue
+                    color = if (selectedBrands.isEmpty()) TextMuted else AccentLime
                 )
             }
         }
+    ) {
+        Text(
+            text = if (selectedBrands.isEmpty()) {
+                "Tüm markalar değerlendiriliyor — en az sapan istasyon seçilir."
+            } else {
+                "${selectedBrands.size} marka önceliklendirildi. Menzil içinde yoksa " +
+                    "yolda kalmamanız için başka marka önerilir."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
+        )
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
+            contentPadding = PaddingValues(vertical = 2.dp)
         ) {
             items(supportedBrands) { brand ->
                 val isSelected = selectedBrands.contains(brand)
-                val brandPrimaryColor = Color(brand.primaryColorHex)
-                val brandAccentColor = Color(brand.accentColorHex)
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (isSelected) PrimaryBlue.copy(alpha = 0.12f) else DarkSurfaceVariant,
+                Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (isSelected) AccentLime.copy(alpha = 0.12f) else DarkSurfaceVariant)
                         .border(
-                            width = if (isSelected) 2.dp else 1.dp,
-                            color = if (isSelected) PrimaryBlue else DarkBorder,
-                            shape = RoundedCornerShape(12.dp)
+                            width = 1.dp,
+                            color = if (isSelected) AccentLime else DarkBorder,
+                            shape = RoundedCornerShape(14.dp)
                         )
                         .clickable { onToggleBrand(brand) }
+                        .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Marka logo/renk rozeti
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(brandPrimaryColor)
-                                .border(1.dp, brandAccentColor, RoundedCornerShape(4.dp))
-                        )
-
-                        Text(
-                            text = brand.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontSize = 13.sp,
-                            color = if (isSelected) TextPrimary else TextSecondary
-                        )
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        BrandBadge(brand = brand, size = 30)
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentLime),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = androidx.compose.ui.graphics.Color.Black,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                            }
+                        }
                     }
+                    Text(
+                        text = brand.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isSelected) TextPrimary else TextSecondary
+                    )
                 }
             }
         }

@@ -13,7 +13,7 @@ data class CityLocation(
         get() = LatLng(latitude, longitude)
 }
 
-enum class PlaceSource { GOOGLE, OPEN_STREET_MAP, LOCAL }
+enum class PlaceSource { OPEN_STREET_MAP, LOCAL }
 
 data class PlaceSuggestion(
     val id: String,
@@ -34,21 +34,27 @@ data class FuelStop(
     val arrivalFuelLiters: Double,        // Kalan yakıt Litre
     val refuelLiters: Double,             // Depoyu tam doldurmak için gereken litre
     val estimatedRefuelCostTL: Double,    // Yaklaşık dolum maliyeti (TL)
-    val detourDistanceKm: Double          // Ana güzergahtan sapma mesafesi (km)
+    val detourDistanceKm: Double          // Ana güzergahtan tek yön sapma mesafesi (km)
 )
 
 @Serializable
 data class TripPlanResult(
     val origin: CityLocation,
     val destination: CityLocation,
-    val totalDistanceKm: Double,
+    val totalDistanceKm: Double,            // Ana güzergah uzunluğu
+    val totalDrivenDistanceKm: Double,      // Duraklara sapmalar dahil gerçekte sürülen mesafe
     val estimatedDrivingTimeMinutes: Int,
     val stops: List<FuelStop>,
-    val totalFuelConsumedLiters: Double,
-    val totalEstimatedCostTL: Double,
+    val totalFuelConsumedLiters: Double,    // Sapmalar dahil yakılan toplam yakıt
+    val totalEstimatedCostTL: Double,       // Yakılan yakıtın parasal karşılığı
+    val totalRefuelCostTL: Double,          // Duraklarda pompada ödenecek toplam tutar
+    val arrivalFuelLiters: Double,          // Varışta depoda kalan yakıt
     val routePoints: List<LatLng>,
     val vehicleProfile: VehicleProfile,
-    val preferredBrands: Set<FuelBrand>
+    val preferredBrands: Set<FuelBrand>,
+    val fuelPrice: FuelPriceSnapshot,
+    /** Menzil içinde uygun istasyon bulunamadıysa kullanıcıya gösterilecek uyarı. */
+    val warning: String? = null
 ) {
     val stopsCount: Int
         get() = stops.size
@@ -56,12 +62,15 @@ data class TripPlanResult(
     val hasStops: Boolean
         get() = stops.isNotEmpty()
 
+    val arrivalFuelPercent: Double
+        get() = (arrivalFuelLiters / vehicleProfile.tankCapacityLiters.coerceAtLeast(1.0)) * 100.0
+
     val googleMapsUrl: String
         get() {
             val originStr = "${origin.latitude},${origin.longitude}"
             val destStr = "${destination.latitude},${destination.longitude}"
             val waypointsStr = stops.joinToString("|") { "${it.station.latitude},${it.station.longitude}" }
-            
+
             return if (waypointsStr.isNotEmpty()) {
                 "https://www.google.com/maps/dir/?api=1&origin=$originStr&destination=$destStr&waypoints=$waypointsStr&travelmode=driving"
             } else {

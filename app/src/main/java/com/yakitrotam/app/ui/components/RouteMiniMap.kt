@@ -3,7 +3,15 @@ package com.yakitrotam.app.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -12,17 +20,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.TripPlanResult
-import com.yakitrotam.app.ui.theme.*
+import com.yakitrotam.app.ui.theme.AccentLime
+import com.yakitrotam.app.ui.theme.DarkBackground
+import com.yakitrotam.app.ui.theme.DarkBorder
+import com.yakitrotam.app.ui.theme.DarkSurface
+import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.ReserveRed
+import com.yakitrotam.app.ui.theme.SafeGreen
+import com.yakitrotam.app.ui.theme.TextMuted
+import com.yakitrotam.app.ui.theme.TextPrimary
+import kotlin.math.cos
 
+/**
+ * Basit rota önizlemesi. Harita karosu indirmez (ücretli/ağ maliyetli olurdu);
+ * sadece rota çizgisi ile durakların birbirine göre konumunu gösterir.
+ */
 @Composable
 fun RouteMiniMap(
     tripResult: TripPlanResult,
@@ -31,131 +52,111 @@ fun RouteMiniMap(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkSurfaceVariant)
-            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+            .height(230.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.verticalGradient(listOf(DarkSurfaceVariant, DarkSurface))
+            )
+            .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 34.dp)) {
             val points = tripResult.routePoints
-            if (points.isEmpty()) return@Canvas
+            if (points.size < 2) return@Canvas
 
-            // Bounding box hesapla
-            var minLat = points.minOf { it.latitude }
-            var maxLat = points.maxOf { it.latitude }
-            var minLng = points.minOf { it.longitude }
-            var maxLng = points.maxOf { it.longitude }
+            val allLats = points.map { it.latitude } + tripResult.stops.map { it.station.latitude }
+            val allLngs = points.map { it.longitude } + tripResult.stops.map { it.station.longitude }
 
-            // Durakları da sınırlara dahil et
-            tripResult.stops.forEach { stop ->
-                minLat = minOf(minLat, stop.station.latitude)
-                maxLat = maxOf(maxLat, stop.station.latitude)
-                minLng = minOf(minLng, stop.station.longitude)
-                maxLng = maxOf(maxLng, stop.station.longitude)
-            }
+            val minLat = allLats.min()
+            val maxLat = allLats.max()
+            val minLng = allLngs.min()
+            val maxLng = allLngs.max()
 
-            val latRange = (maxLat - minLat).coerceAtLeast(0.0001)
-            val lngRange = (maxLng - minLng).coerceAtLeast(0.0001)
+            // Boylamı enleme göre ölçekle, aksi halde Türkiye rotaları yatayda gerilmiş görünür.
+            val lonScale = cos(Math.toRadians((minLat + maxLat) / 2.0))
+            val spanX = ((maxLng - minLng) * lonScale).coerceAtLeast(1e-6)
+            val spanY = (maxLat - minLat).coerceAtLeast(1e-6)
 
-            val w = size.width
-            val h = size.height
+            // En-boy oranını koru, sığdır ve ortala.
+            val scale = minOf(size.width / spanX, size.height / spanY)
+            val offsetX = (size.width - spanX * scale) / 2.0
+            val offsetY = (size.height - spanY * scale) / 2.0
 
-            fun project(point: LatLng): Offset {
-                // Enlem (Lat) yukarı doğru arttığı için Y eksenini ters çevir
-                val x = ((point.longitude - minLng) / lngRange * w).toFloat()
-                val y = ((maxLat - point.latitude) / latRange * h).toFloat()
-                return Offset(x, y)
-            }
-
-            // 1. Rota Çizgisi (Polyline)
-            val routePath = Path()
-            val firstOffset = project(points.first())
-            routePath.moveTo(firstOffset.x, firstOffset.y)
-
-            for (i in 1 until points.size) {
-                val offset = project(points[i])
-                routePath.lineTo(offset.x, offset.y)
-            }
-
-            // Glow / Alt hat
-            drawPath(
-                path = routePath,
-                color = PrimaryBlue.copy(alpha = 0.3f),
-                style = Stroke(width = 10f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            fun project(point: LatLng) = Offset(
+                (offsetX + (point.longitude - minLng) * lonScale * scale).toFloat(),
+                (offsetY + (maxLat - point.latitude) * scale).toFloat()
             )
 
-            // Ana hat
-            drawPath(
-                path = routePath,
-                color = PrimaryBlue,
-                style = Stroke(width = 4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-
-            // 2. Akaryakıt Durakları Noktaları
-            tripResult.stops.forEach { stop ->
-                val stopOffset = project(stop.station.location)
-                val brandColor = Color(stop.station.brand.primaryColorHex)
-
-                // Dış halka
-                drawCircle(
-                    color = Color.Black.copy(alpha = 0.6f),
-                    radius = 12f,
-                    center = stopOffset
-                )
-                // Marka rengi göbeği
-                drawCircle(
-                    color = brandColor,
-                    radius = 9f,
-                    center = stopOffset
-                )
-                // İç beyaz nokta
-                drawCircle(
-                    color = Color.White,
-                    radius = 4f,
-                    center = stopOffset
-                )
+            val routePath = Path().apply {
+                val first = project(points.first())
+                moveTo(first.x, first.y)
+                for (i in 1 until points.size) {
+                    val offset = project(points[i])
+                    lineTo(offset.x, offset.y)
+                }
             }
 
-            // 3. Başlangıç Noktası (Yeşil Pin)
-            val startOffset = project(tripResult.origin.latLng)
-            drawCircle(color = SafeGreen, radius = 9f, center = startOffset)
-            drawCircle(color = Color.White, radius = 4f, center = startOffset)
+            drawPath(
+                path = routePath,
+                color = AccentLime.copy(alpha = 0.18f),
+                style = Stroke(width = 14f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+            drawPath(
+                path = routePath,
+                color = AccentLime,
+                style = Stroke(width = 4.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
 
-            // 4. Varış Noktası (Kırmızı / Bitiş Bayrağı Noktası)
-            val endOffset = project(tripResult.destination.latLng)
-            drawCircle(color = ReserveRed, radius = 9f, center = endOffset)
-            drawCircle(color = Color.White, radius = 4f, center = endOffset)
+            tripResult.stops.forEach { stop ->
+                val center = project(stop.station.location)
+                // Koyu marka renkleri (ör. Opet lacivert) koyu zeminde kaybolmasın diye
+                // açık bir halka ile çevrelenir.
+                drawCircle(color = Color.White, radius = 13f, center = center)
+                drawCircle(color = Color(stop.station.brand.primaryColorHex), radius = 10f, center = center)
+                drawCircle(color = Color.White, radius = 3.5f, center = center)
+            }
+
+            project(tripResult.origin.latLng).let {
+                drawCircle(color = Color.White, radius = 12f, center = it)
+                drawCircle(color = SafeGreen, radius = 9f, center = it)
+            }
+            project(tripResult.destination.latLng).let {
+                drawCircle(color = Color.White, radius = 12f, center = it)
+                drawCircle(color = ReserveRed, radius = 9f, center = it)
+            }
         }
 
-        // Bilgilendirme Rozeti
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(12.dp)
-                .background(DarkBackground.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
-                .border(0.5.dp, DarkBorder, RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .clip(RoundedCornerShape(10.dp))
+                .background(DarkBackground.copy(alpha = 0.9f))
+                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(SafeGreen)
-            )
-            Text(
-                text = "${tripResult.origin.name.substringBefore(" ")} → ${tripResult.destination.name.substringBefore(" ")}",
-                style = MaterialTheme.typography.labelLarge,
-                color = TextPrimary,
-                fontSize = 11.sp
-            )
-            Text(
-                text = "• ${tripResult.stopsCount} Durak",
-                style = MaterialTheme.typography.labelLarge,
-                color = FuelAmber,
-                fontSize = 11.sp
-            )
+            LegendDot(SafeGreen, "Kalkış")
+            LegendDot(ReserveRed, "Varış")
+            LegendDot(AccentLime, "${tripResult.stopsCount} durak")
         }
+
+        Text(
+            text = "© OpenStreetMap katkıcıları",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextMuted,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+        )
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(color))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextPrimary)
     }
 }

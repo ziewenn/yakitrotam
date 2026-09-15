@@ -1,0 +1,392 @@
+osm_type	osm_id	lat	lon	brand	name	city	street	diesel	lpg	gasoline	opening_hours
+node	29268756	40.773268	31.318955	Murat Canazlar	Bağdatlı Petrol Akaryakıt ve Lpg İstasyonu		Düzce-Bolu Yolu				24/7
+node	29268760	40.772593	31.323204								
+node	29268802	40.764575	31.352526								
+node	29268803	40.770614	31.353605								
+node	29269590	40.728610	31.433772								
+node	29279948	40.240623	32.503208	TotalEnergies	TotalEnergies						
+node	29279955	40.749310	32.083347								
+node	29279957	40.742829	31.858665								
+node	29284916	39.981403	32.657452	Aygaz	Aygaz						24/7
+node	60166097	39.953402	32.839229	Shell	Shell						
+node	122609791	39.898196	32.843168	Shell	Shell Türk A.Ş.						
+node	288765880	40.789981	31.243790	Petrol Ofisi	Petrol Ofisi						
+node	309903653	39.932202	32.828007	Petrol Ofisi	Petrol Ofisi (PO)						
+node	309903664	39.945682	32.847585	BP	BP						
+node	552869782	40.998993	29.154934	Shell	Shell						
+node	667438594	39.956398	32.704973	Shell	Shell						
+node	674685173	39.952089	32.796731	Opet	Opet						
+node	772439779	41.005037	29.030791	Shell	Shell Baban Petrol						
+node	1457971063	40.751759	30.698225		Pacıfıc						
+node	1457971150	40.752995	30.696587		Pacific						
+node	1469843600	40.773977	32.041883								
+node	1670461592	40.987644	29.087031	TotalEnergies	Total						
+node	1713488174	40.978326	29.123549	Opet	Opet						
+node	1755203245	40.983505	29.091908	TotalEnergies	Total						
+node	1847962947	40.791250	31.238616	Petrol Ofisi	Petrol Ofisi						
+node	1947162403	40.824134	30.189051								
+node	1952705218	40.757036	31.921563		Teco						
+node	1952705331	40.761899	31.781078								
+node	1977133229	40.757735	31.367365								
+node	1977133608	40.778965	31.284851		Çekoil						
+node	1981730683	40.753260	30.547821		Class						
+node	1981730702	40.757005	30.567137								
+node	1986965768	40.758262	31.926286								
+node	1986965786	40.759002	31.932655		Termo						
+node	1986965795	40.760037	31.940994		M Oil						
+node	2005576036	40.738632	31.825090								
+node	2027023192	40.763725	30.597129		Turkish Oil						Mo-Su,PH 00:00-00:00
+node	2028794664	40.853229	30.956638		S-Oil						
+node	2028794671	40.853457	30.954642								
+node	2028794687	40.853769	31.001963								
+node	2028794722	40.854792	30.990054								
+node	2028794726	40.855270	30.977191								
+node	2071984580	40.333115	32.500449								
+node	2095604553	40.729402	31.543800	BP	BP						
+node	2150965695	40.849353	31.051202	Petrol Ofisi							
+node	2326017909	40.787604	31.261693	Alpet	Türkseven						
+node	2326017951	40.800763	31.240174	Turnagaz							
+node	2326314371	40.720007	31.460398		Nipet						
+node	2326858057	40.849291	31.053960	Shell	Shell						
+node	2330849132	40.775715	31.307940								
+node	2330849302	40.778274	31.288888								
+node	2341042247	40.813282	31.219397								
+node	2350725647	39.928499	32.866093	BP	BP						
+node	2354221067	40.717389	31.474689		Konak Park Petrol						
+node	2354221120	40.718436	31.470654								
+node	2354221618	40.728590	31.537456								
+node	2372667546	40.798792	30.420730		TEM'i kokümer 2						
+node	2372667549	40.800139	30.405910		Hypco						
+node	2372667552	40.800371	30.411880	Opet	Opet						
+node	2372667554	40.801419	30.405987		Teko Fırat Adapazarı						
+node	2372667557	40.806548	30.434963	BP	BP						
+node	2381588597	40.899247	29.522097								
+node	2384550847	40.887830	29.769950								
+node	2392986716	41.015641	29.074591	Opet	Opet						
+node	2392986717	41.016763	29.076090	Shell	Shell						24/7
+node	2459085781	40.796129	30.422493								
+node	2459085782	40.789876	30.424074								
+node	2514015965	39.945680	32.873471								
+node	3356237384	40.719610	31.464879	Shell	Shell		Bolu Düzce Yolu				
+node	3671739935	40.777005	31.296562								
+node	3782123049	40.780785	31.279284	KadOil	İnciler Petrol	Kaynaşlı	Düzce-Bolu Yolu				
+node	3813450882	40.737388	31.595027	Shell	Shell						
+node	3872423547	39.939408	32.879356		Petrol Ofisi						
+node	4063725942	39.908881	32.858486								
+node	4416266553	41.008576	29.201665	Petrol Ofisi	Petrol Ofisi						
+node	4682589529	39.932413	32.828726	TotalEnergies	Total Energies						
+node	4699018047	40.961200	29.282842	Opet	Opet Sultanbeyli	İstanbul	Demokrasi Caddesi	yes	yes		
+node	4699018077	41.011249	29.075282	Petrol Ofisi	Petrol Ofisi	İstanbul	Libadiye Caddesi	yes	yes	yes	
+node	4699018192	39.945844	32.717153	Opet	Opet Yenimahalle	Ankara	Fatih Sultan Mehmet Bulvarı	yes	yes		
+node	4699018219	39.951495	32.823934	Opet	Opet Yenimahalle	Ankara	Hipodrom Caddesi	yes	yes		
+node	4699018229	41.022502	29.115920	Opet	Opet Ümraniye	İstanbul	Alemdağ Caddesi	yes	yes		Mo-Su,PH 00:00-00:00
+node	4699018244	41.008290	29.023040	Petrol Ofisi	Petrol Ofisi	İstanbul	Tıbbiye Caddesi Atölyeler Sokak	yes	yes		
+node	4699018280	39.897636	32.842733	Opet	Opet Çankaya	Ankara	Dikmen Caddesi	yes	yes		
+node	4699018401	39.991336	32.634801	Opet	Opet Etimesgut	Ankara	1. TBMM Caddesi	yes	yes		24/7
+node	4699018444	40.735679	31.585250	Opet	Opet/Mogaz	Bolu	D-100 Karayolu Caddesi	yes	yes		
+node	4699018893	39.949037	32.840215	Opet	Opet Altındağ	Ankara	Samanyolu Caddesi	yes	yes		
+node	4699018917	39.962651	32.808700	Opet	Opet Yenimahalle	Ankara	İvedik Caddesi	yes	yes		
+node	4699018919	40.791472	29.980232	Opet	Opet İzmit	Kocaeli		yes	yes		
+node	4699018926	39.944693	32.758016	Opet	Opet Etimesgut	Ankara	Fatih Sultan Mehmet Bulvarı	yes	yes		
+node	4699019302	39.957439	32.765229	Opet	Opet Yenimahalle	Ankara	187. Caddesi	yes	yes		
+node	4699019345	39.965571	32.854281	Opet	Opet Keçiören	Ankara	Gülhane Caddesi	yes	yes		
+node	4699019360	41.007955	29.201664	Opet	Opet Ümraniye	İstanbul	Atatürk Caddesi	yes	yes		
+node	4699019379	40.982402	29.106104	Opet	Opet Ataşehir	İstanbul	Merdivenköy Yolu Caddesi	yes	yes		
+node	4699019915	40.723234	31.467246	Opet	Opet Bolu Merkez	Bolu	Ankara İstanbul Karayolu 227. Km.	yes	yes		
+node	4699019916	40.725079	31.465586	Opet	Opet	Bolu	Ankara - İstanbul Karayolu 227. Km.	yes	yes		
+node	4699019923	40.082677	32.615641	Opet Petrolcülük A.Ş.	Opet Kazan	Ankara	İstanbul Yolu 30. Km.	yes	yes		
+node	4699019926	40.112038	32.599107	Opet	Opet Lojistik Üssü	Ankara		yes	yes		
+node	4699019930	39.921488	32.817254	Opet	Opet Çankaya	Ankara	Bişkek Caddesi	yes	yes		
+node	4699020960	39.951789	32.854198	Opet	Opet Altındağ	Ankara	Kazım Karabekir Caddesi	yes	yes		
+node	4699020963	39.954112	32.841019	Opet	Opet İskitler	Ankara	Turgut Özal Bulvarı İskitler Caddesi	yes	yes		
+node	4699020965	39.963828	32.745142	Opet	Opet Yenimahalle	Ankara	Başkent Bulvarı	yes	yes		
+node	4699020966	39.951725	32.771881	Opet Petrolcülük A.Ş.	Opet Yenimahalle	Ankara	Anadolu Bulvarı	yes	yes		
+node	4699020970	39.966094	32.812091	Opet	Opet Yenimahalle	Ankara	Ragıp Tüzün Caddesi	yes	yes		
+node	4699020973	39.958993	32.688921	BP	BP	Ankara	İstanbul Devlet Yolu	yes	yes		
+node	4699020974	39.936144	32.712799	Opet	Opet Etimesgut	Ankara	6. Caddesi	yes	yes		
+node	4699020975	39.963640	32.652747	Opet	Opet Etimesgut	Ankara	Sincan Ayaş Yolu	yes	yes		
+node	4699020976	39.954594	32.770403	Opet Petrolcülük A.Ş.	Opet Yenimahalle	Ankara	Anadolu Bulvarı	yes	yes		
+node	4699022504	40.773680	32.040386	Opet Petrolcülük A.Ş.	Opet Yeniçağa	Bolu	D-100 Karayolu	yes	yes		
+node	4699022512	40.771586	31.340700	Opet Petrolcülük A.Ş.	Opet Kaynaşlı	Düzce	D-100 Karayolu	yes	yes		
+node	4699022522	40.839898	30.340223	Opet	Opet Adapazarı	Sakarya	Prof. Dr. Sebahattin Zaim Bulvarı	yes	yes		
+node	4699022949	40.968128	29.253129	Opet	Opet Sultanbeyli	İstanbul	Fatih Bulvarı	yes	yes		
+node	4699022951	40.983870	29.165959	Opet	Opet Ümraniye	İstanbul	Üsküdar Caddesi	yes	yes		
+node	4699022953	40.987731	29.143805	Opet	Opet Ataşehir	İstanbul	Dudullu Caddesi	yes	yes		
+node	4699022962	41.031458	29.079681	Opet	Opet	İstanbul	Bosna Bulvarı	yes	yes		
+node	4699022970	41.008499	29.215943	Opet	Opet	İstanbul	Atatürk Caddesi	yes	yes		
+node	4699023905	40.977600	29.220607	Opet	Opet Sancaktepe	İstanbul	Yakacık Caddesi	yes	yes		
+node	4699023914	40.990082	29.263793	Opet	Opet Sultanbeyli	İstanbul	Mimar Sinan Caddesi	yes	yes		
+node	4699023929	39.928615	32.868444	Opet	Opet	Ankara	Cemal Gürsel Caddesi	yes	yes		
+node	4699023930	41.009864	29.012243	Opet	Opet Üsküdar	İstanbul	Harem Sahil Yolu	yes	yes		
+node	4699023945	39.930760	32.847999	Opet	Opet Çankaya	Ankara	Celal Bayar Bulvarı	yes	yes		
+node	4699023957	39.909384	32.859072	Opet	Opet Çankaya	Ankara	John F. Kennedy Caddesi Bestekar Sokak	yes	yes		
+node	4714999892	40.015218	32.654570	Petrol Ofisi	Petrol Ofisi						
+node	4755009109	40.804007	30.406261								
+node	4755009118	40.813447	30.403472								
+node	4755145665	39.964476	32.646721	Petrol Ofisi	Petrol Ofisi						
+node	4755145666	39.958685	32.687694	Türkiye Petrolleri	Türkiye Petrolleri						
+node	4755145667	39.958078	32.688857		Milangaz						
+node	4755145668	39.957027	32.691695	Opet	Opet						
+node	4755145669	39.955500	32.694268	Petrol Ofisi	Petrol Ofisi						
+node	4755145670	39.954821	32.693821	TotalEnergies	TotalEnergies						
+node	4779867627	40.965013	29.272035								
+node	4779867647	40.974883	29.240681	Petrol Ofisi	Petrol Ofisi	İstanbul	Osmangazi				
+node	4838961896	41.007153	29.188286		Class						
+node	4845528107	40.757791	30.570589		7Kıta						
+node	4845529899	40.774084	30.596613								
+node	4875768257	39.904403	32.868508	Petrol Ofisi	Petrol Ofisi						
+node	4897048924	40.054915	32.627862								
+node	4897048925	40.057159	32.624825								
+node	4897048926	40.056924	32.622966								
+node	4897048935	40.065108	32.613162								
+node	4897048936	40.078574	32.613044		Petrol Ofisi						
+node	4897048937	40.084194	32.616315		Liman						
+node	4897048938	40.085096	32.615786								
+node	4897048939	40.122459	32.635777								
+node	4897048940	40.122093	32.636566		Welloil						
+node	4976098139	40.822982	29.927327	Shell	Shell		Kurtuluş Bulvarı				
+node	4991089688	39.974736	32.773627		Milangaz						
+node	5010928520	40.784035	30.434048	Shell	Shell						
+node	5052765899	40.966764	29.215625	Aytemiz	Aytemiz						
+node	5052765904	40.966432	29.216493								
+node	5052766527	40.969560	29.220160								
+node	5052766554	40.980603	29.220274								
+node	5052766565	40.986969	29.226105	Opet	Opet						
+node	5052833560	40.992702	29.223123								
+node	5053328286	41.003895	29.216885								
+node	5053408890	41.009731	29.210874	Petrol Ofisi	Petrol Ofisi						24/7
+node	5053408891	41.010370	29.210435	Petrol Ofisi	Petrol Ofisi						
+node	5053408898	41.012550	29.207388								
+node	5053409386	41.013615	29.191211								
+node	5053409725	41.016564	29.177720	Petrol Ofisi	Petrol Ofisi						
+node	5053458360	41.018193	29.171658	BP	BP						24/7
+node	5102601608	40.609395	32.253440	Türkiye Petrolleri	TP						24/7
+node	5107277905	41.016507	29.030207								
+node	5107315776	41.004768	29.035340	Aytemiz	Aytemiz						
+node	5149577694	40.971765	29.248514	Petrol Ofisi	Petrol Ofisi	İstanbul	Fatih Bulvarı				
+node	5151220720	40.967791	29.269986								
+node	5151430409	40.969701	29.265991	TotalEnergies	Total						
+node	5158327351	40.940629	29.285256								
+node	5208250439	40.960535	29.291623	Shell	Shell						
+node	5216174643	40.737678	31.597332	Petrol Ofisi	Petrol Ofisi						
+node	5241052071	40.775852	31.303075								
+node	5241052080	40.789785	31.242904	Petrol Ofisi	Petrol Ofisi						
+node	5244129822	40.990253	29.175846	Lukoil	Lukoil						
+node	5252526622	40.800293	29.983847								
+node	5252526636	40.796768	29.992341	Opet	Opet	Kocaeli	İzmit - Kandıra Yolu				
+node	5282118221	39.945403	32.760201	TotalEnergies	TotalEnergies						
+node	5283303556	40.981511	29.068631	Petrol Ofisi	Petrol Ofisi						
+node	5290533598	41.007132	29.190344	Shell	Shell						
+node	5316391220	40.990559	29.076787		Uspet						
+node	5316393025	40.989951	29.082097	Petrol Ofisi	Petrol Ofisi						
+node	5316393026	40.998051	29.091529								
+node	5325989936	40.749094	32.083276	Shell	Shell						
+node	5329319844	40.942489	29.302036	Petrol Ofisi	Petrol Ofisi	İstanbul	Fatih Bulvarı				
+node	5329320553	40.972706	29.262292		P MAX	İstanbul					
+node	5329338009	40.964362	29.274247	Aytemiz	Aytemiz	İstanbul	Erdoğan caddesi				
+node	5344919571	40.942255	29.301250	Lukoil	Lukoil	İstanbul	Fatih Bulvarı				
+node	5362917722	41.023096	29.108013	Opet	Opet Gültepe						
+node	5362917723	41.002049	29.163654	Opet	Opet imes 1						
+node	5385351123	41.001850	29.164305		imes petrol 089						
+node	5385351124	40.971905	29.249164	Opet	Opet						
+node	5462640316	41.007903	29.180836	BP	BP						
+node	5479470554	41.022780	29.109618	Petrol Ofisi	Petrol Ofisi						
+node	5479470622	41.022187	29.112675	TotalEnergies	TotalEnergies						
+node	5518538573	40.849848	31.058601	BP	BP						
+node	5542883356	40.964367	29.281366		Onex	İstanbul	Fatih Bulvarı Caddesi				
+node	5542883408	40.971161	29.257517	Opet	Opet	İstanbul	Atatürk Caddesi				
+node	5542883570	40.969441	29.257193	TotalEnergies	Total	İstanbul	faith bulvarı Caddesi				
+node	5542883589	40.941934	29.301610		Bulvar girişi	İstanbul	Eşref bitlis blv				
+node	5542883633	40.948057	29.299675		Akşamsettin	İstanbul	Fatih bulguru				
+node	5542883700	40.982563	29.266763	Shell	Shell	İstanbul	bosna Caddesi				
+node	5542886345	40.951119	29.297615	TotalEnergies	total Emkar petrol sanayi karsì	İstanbul	sanayiye				
+node	5542889147	40.963835	29.284465	Türkiye Petrolleri	TP - Türkiye Petrolleri	İstanbul	Fatih Bulvarı Caddesi				
+node	5554423599	40.828238	30.469940	Opet	Opet						
+node	5616649534	40.981433	29.081183	BP	BP						
+node	5646579390	40.726818	31.587446		Shell					yes	
+node	5701334436	40.728319	32.076178		Termo						
+node	5702499605	40.728859	31.589506		GO Petrol						
+node	5702499606	40.730375	31.588457	BP	BP						
+node	5711460502	40.725760	31.465807								
+node	5711485187	40.773705	31.320053								
+node	5711485189	40.790466	31.256868								
+node	5711485215	40.809636	31.226143								
+node	5716659898	40.723933	31.439224								
+node	5716660007	40.720921	31.453196								
+node	5716660031	40.728733	31.552038	Total	Total						
+node	5719435218	40.735261	31.630683								
+node	5719435443	40.751103	31.757192		Maspet						
+node	5749097344	40.739265	31.623335	Petrol Ofisi	Petrol Ofisi						
+node	5779107672	39.975297	32.759650	BP	BP						
+node	5779107673	39.973247	32.757596		Aygaz				yes		
+node	5779107674	39.973297	32.756560	Shell	Shell						
+node	5826604030	40.753580	32.075688	Shell	Shell						
+node	5860849185	40.614285	32.255812	Türkiye Petrolleri	TP						
+node	5860883187	40.466296	32.363898		Total Kocalar						
+node	5860888286	40.465499	32.362836		Total Kocalar						
+node	5954059533	41.022562	29.075269	Petrol Ofisi	Petrol Ofisi						
+node	5981349551	40.727634	31.610379	Petrol Ofisi	Petrol Ofisi						
+node	6043773037	40.762914	31.639464								
+node	6203499794	39.985215	32.698973								
+node	6346698606	40.790697	30.458987								
+node	6380826386	39.975175	32.767837	Aytemiz	Aytemiz						
+node	6380826387	39.971166	32.771374	Aytemiz	Aytemiz						
+node	6507504085	40.956755	29.213875	Opet	Opet						
+node	6512531400	40.989446	29.042175	Petrol Ofisi	Petrol Ofisi						
+node	6742247605	40.823926	30.353327								
+node	6805146202	41.014589	29.075604	TotalEnergies	Total						
+node	6805337406	40.989431	29.195367	Shell	Shell						
+node	6862518820	41.007895	29.192887	Opet	Opet						24/7
+node	6863696019	40.927493	29.346924	Petrol Ofisi	Petrol Ofisi						
+node	6877008471	39.932849	32.830317	Shell	Shell			yes		yes	
+node	6877089093	39.952589	32.860748								
+node	6884267014	41.013955	29.195435	Shell	Shell	İstanbul	Muhsin Yazıcıoğlu Caddesi				
+node	6973615085	40.928842	29.439591								
+node	6983204582	39.969723	32.770327	Aytemiz	YKD Akaryakıt 2			yes	yes	yes	24/7
+node	7006962346	40.752394	31.766982		Maspet						
+node	7046396309	41.014458	29.190402	Opet	Opet						
+node	7046396315	40.993615	29.188991	Opet	Opet Ümraniye	İstanbul	1. Caddesi 10. Sokak	yes	yes		
+node	7080503385	40.849125	30.196767								
+node	7145762135	41.018544	29.084577	Petrol Ofisi	Petrol Ofisi						
+node	7621910819	40.939393	29.317263	Petrol Ofisi	Petrol Ofisi						
+node	7655333041	39.947167	32.781404								
+node	7655333050	39.951529	32.792804	Shell	Shell			yes	yes	yes	
+node	7655337244	39.959442	32.810662	Aytemiz	Aytemiz						
+node	7656054264	41.001533	29.078071	Opet	Opet	İstanbul	Adnan Menderes Caddesi	yes		yes	
+node	7668596055	40.981600	29.221505								
+node	7677217314	39.951896	32.837425								
+node	7677217315	39.956557	32.845526								
+node	7677217316	39.956546	32.847378								
+node	7677217317	39.957345	32.851995	Petrol Ofisi	Petrol Ofisi						
+node	7677217318	39.957968	32.855457								
+node	8003411696	40.783707	30.740848	Petrol Ofisi	Petrol Ofisi						
+node	8039541108	39.964019	32.799586								
+node	8039541133	39.959453	32.764278								
+node	8039541143	39.974999	32.761720		Milangaz				yes		
+node	8039541144	39.965024	32.748758	Shell	Shell						
+node	8039541145	39.945533	32.754055								
+node	8715782117	39.923620	32.817995	BP	BP		Bişkek Caddesi				24/7
+node	8849107329	39.949860	32.853192	Shell	Shell						
+node	8851293720	39.987338	32.655735	Petrol Ofisi	Petrol Ofisi						24/7
+node	8851293721	39.987556	32.657093	Shell	Shell						24/7
+node	8852452641	40.931674	29.338955	Opet	Opet Tuzla	İstanbul	Eski Ankara Caddesi Tepeören Yolu	yes	yes		
+node	8871405786	40.853417	30.998485								
+node	9163130243	39.970955	32.664251	TotalEnergies	TotalEnergies						24/7
+node	9164347669	39.939939	32.879213								
+node	9169697695	39.934245	32.875344	Petrol Ofisi	Petrol Ofisi						Mo-Su 00:00-23:58
+node	9216841779	40.778892	30.080504								
+node	9235291470	39.919834	32.862651	Shell	Shell	Çankaya/Ankara	Libya Caddesi				
+node	9272903749	40.733600	31.569594	Sunpet	Sunpet Aygaz						
+node	9272903758	40.780565	31.282664								
+node	9277136712	40.737385	31.595793	Opet	Opet Aygaz						
+node	9277797570	39.963394	32.753610								
+node	9277797571	39.964223	32.754854								
+node	9277797596	39.960605	32.772435	Petrol Ofisi	Petrol Ofisi						
+node	9277802019	39.934325	32.719164		Kadoil - HAY-SA Petrol						
+node	9277802021	39.945400	32.711149	Alpet	Alpet						
+node	9277802022	39.944832	32.731378								
+node	9277802027	39.947666	32.706882	Aytemiz	Aytemiz						
+node	9277802028	39.950961	32.701618	Shell	Shell						
+node	9277802029	40.006570	32.655423	BP	BP						
+node	9277860411	39.964387	32.798209								
+node	9280275837	39.946213	32.842623	Lukoil	Aca Gıda Akaryakıt						
+node	9280275838	39.947929	32.840418								
+node	9280275840	39.966232	32.808937	Shell	Shell			yes	yes	yes	
+node	9280275842	39.969282	32.826435	BP	BP						
+node	9283139107	40.935843	29.361140	BP	BP	İstanbul	İstanbul Park Bulvarı				
+node	9283139109	40.940562	29.369872	Shell	Shell	İstanbul	İstanbul Park Bulvarı				
+node	9283139110	40.942644	29.373383	Petrol Ofisi	Petrol Ofisi	İstanbul	İstanbul Park Bulvarı				
+node	9283139111	40.928386	29.436014	Opet	Opet						
+node	9283139116	40.944586	29.388024	Lukoil	Lukoil						
+node	9283139717	40.935012	29.328807	TotalEnergies	TotalEnergies TSK Mehmetcik Vakfı	İstanbul	Dedepaşa Caddesi	yes	yes	yes	24/7
+node	9283195049	41.022198	29.042937	TotalEnergies	Total	İstanbul	Mahir İz Caddesi				
+node	9283195050	41.023020	29.043048	TotalEnergies	Total	İstanbul	Kısıklı Caddesi	yes	yes	yes	
+node	9283195052	41.024153	29.054872	Opet	Opet						
+node	9283195053	41.023899	29.081573	TotalEnergies	Total						
+node	9283216811	41.002993	29.036224	TotalEnergies	Total						
+node	9283216812	41.003184	29.034139	Shell	Shell						
+node	9283216813	41.006827	29.025150	Shell	Shell						
+node	9284957400	39.947556	32.738940		Petrol Ofisi						
+node	9284957401	39.945612	32.731114								
+node	9284957402	39.949635	32.719099								
+node	9284989639	39.918706	32.879766	Petrol Ofisi	Petrol Ofisi						
+node	9285013176	40.029137	32.643206								
+node	9285531231	39.931621	32.847610	Petrol Ofisi	Petrol Ofisi						
+node	9285879504	39.965545	32.638556	Shell	Shell						
+node	9300325252	40.981036	29.131120	Shell	Shell						
+node	9300325253	40.979363	29.127198	BP	BP Kayışdağı						
+node	9300325266	40.979050	29.104657	Türkiye Petrolleri	Türkiye Petrolleri	İstanbul	Kayışdağı Caddesi				
+node	9300325267	40.985313	29.107179	Shell	Shell						
+node	9300325268	40.985987	29.108754	Petrol Ofisi	Petrol Ofisi						
+node	9308547296	40.980661	29.041837	Petrol Ofisi	Petrol Ofisi			yes		yes	24/7
+node	9308547309	40.983935	29.040090	Opet	Opet Kızıltoprak	İstanbul	Bağdat Caddesi	yes	yes		
+node	9311961842	41.014123	29.163782	Opet	Opet Ümraniye	İstanbul	Necip Fazıl Bulvarı	yes	yes		
+node	9311961843	41.015759	29.153125								
+node	9311961844	41.016093	29.150370								
+node	9311961845	41.016460	29.146032	Opet	Opet Ortaş						
+node	9311961846	41.005521	29.146307	Petrol Ofisi	Erk Petrol						
+node	9311961847	41.013287	29.107263	Petrol Ofisi	Petrol Ofisi						
+node	9312162023	40.958523	29.214818	Shell	Shell						
+node	9350879091	39.954426	32.831473	Kadoil	Kadoil			yes		yes	
+node	9350879092	39.954175	32.831804	Kadoil	Kadogaz				yes		
+node	9415375151	39.942940	32.847022	BP	BP						
+node	9548948544	39.959859	32.847221	Shell	Shell						
+node	9548948546	39.945378	32.845912								
+node	9901992318	40.797369	31.127228								
+node	10074865614	39.959013	32.827127	TotalEnergies	Total						
+node	10315252809	39.918096	32.828034	Aytemiz	Aytemiz						
+node	10814257600	40.794723	30.075813	TotalEnergies	TotalEnergies						
+node	10814257601	40.795651	30.078450	TotalEnergies	TotalEnergies						
+node	10992418374	40.721249	31.464326	Aygaz	Aygaz LNG Dolum İstasyonu						
+node	11016743405	40.770862	32.028154	Petrol Ofisi	Petrol Ofisi						
+node	11190451214	40.750453	31.628961								
+node	11572118263	39.950782	32.836491	Petrol Ofisi	Petrol Ofisi						
+node	11578383440	40.988459	29.145552	Petrol Ofisi	Petrol Ofisi						
+node	11578580141	40.984163	29.056914	Opet	Opet	İstanbul	Fahrettin Kerim Gökay Caddesi	yes	yes		
+node	11586230277	41.020548	29.129611	Shell	Shell	İstanbul	Alemdağ Caddesi				24/7
+node	11699761240	40.785218	31.119107								
+node	12144085707	40.242310	32.502259	TotalEnergies	TotalEnergies						
+node	12162401430	39.974599	32.758667	TotalEnergies	TotalEnergies						
+node	12198501225	41.004493	29.030382	Shell	Shell						
+node	12240815362	40.920658	29.350217	TotalEnergies	Total Tuzla	İstanbul	Katip Çelebi Caddesi	yes	yes		24/7
+node	12566975781	40.844824	30.287263	Shell	Shell						24/7
+node	12567012436	40.843351	30.284607	Shell	Shell						24/7
+node	12602389937	39.971037	32.734787	Shell	Shell						
+node	12625869986	39.960768	32.770794	Shell	Shell						
+node	12821056291	40.981344	29.165051	Türkiye Petrolleri	Türkiye Petrolleri	İstanbul	Üsküdar Caddesi				
+node	13361685715	39.949165	32.838579	Türkiye Petrolleri	Türkiye Petrolleri						
+node	13647082417	39.979418	32.685569	Petrol Ofisi	Petrol Ofisi						
+node	13700655123	41.031104	29.107525	TotalEnergies	TotalEnergies						
+way	363637322	40.999321	29.181625								
+way	499316078	40.975234	29.052288	Shell	Shell						
+way	499614869	40.926196	29.351089	Shell	Shell						
+way	600763902	40.725139	31.465318	Opet	Opet						
+way	1087241933	40.794681	30.076163	TotalEnergies	TotalEnergies						
+way	1087241934	40.795765	30.078138	TotalEnergies	TotalEnergies						
+way	1328615126	40.991693	29.223849								
+way	1355651511	40.751789	30.698597		Pacific						
+way	1355653143	40.752971	30.696414		Pacific						
+way	1357049577	40.789792	31.243149	Petrol Ofisi	Petrol Ofisi						
+way	1357051157	40.791309	31.238365	Petrol Ofisi	Petrol Ofisi						
+way	1383338957	40.974991	29.240721	Petrol Ofisi	Petrol Ofisi						
+way	1383516712	40.987698	29.143822	Opet	Opet						
+way	1383516714	40.988529	29.145538	Petrol Ofisi	Petrol Ofisi						
+way	1384283544	41.016451	29.145907	Opet	Opet						
+way	1384283545	41.016768	29.141535								
+way	1384652933	41.008602	29.201665	Petrol Ofisi	Petrol Ofisi						
+way	1395490267	40.989092	29.194029								
+way	1395490271	40.988065	29.193127								
+way	1463902928	41.016855	29.076225								
+way	1463906395	41.024291	29.054902								
+way	1466274094	40.940585	29.369844								
+way	1466274095	40.942798	29.373496								
+way	1466829119	41.014101	29.163650								
+way	1466829137	41.020519	29.129632								
+way	1468074266	40.977743	29.220510	Opet	Opet						
+way	1468074280	40.969440	29.220176								
+way	1472906656	41.032949	29.110885								
+way	1502802803	41.031137	29.107592	TotalEnergies	TotalEnergies						
+way	1517239101	41.008583	29.215861								
+way	1517787079	40.969708	29.266039								
+way	1521308301	40.972762	29.262320								
+way	1521875004	41.007960	29.180783	BP	BP						

@@ -39,11 +39,6 @@ jobs:
           fi
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > app/yakitrotam-release.keystore
 
-      - name: Google Places anahtarını hazırla
-        env:
-          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-        run: printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > local.properties
-
       - name: Testleri çalıştır ve APK oluştur
         env:
           RELEASE_STORE_FILE: yakitrotam-release.keystore

@@ -3,6 +3,11 @@ name: Android APK
 on:
   push:
     branches: [main]
+    # Yalnızca belge değişen push'lar aynı APK'nın kopyası bir release üretmesin.
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:

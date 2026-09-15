@@ -1,129 +1,160 @@
-# ⛽ YakıtRotam - Akıllı Akaryakıt & Rota Planlayıcı (Android)
+Türkçe | [English](README.en.md)
 
-> **Elektrikli araçlar için ABRP (A Better Routeplanner) neyse, içten yanmalı araçlar (Benzin, Motorin, LPG) için YakıtRotam odur!**
+# YakıtRotam
 
-YakıtRotam; Türkiye'deki araç sürücülerinin depo kapasitesi, ortalama yakıt tüketimi (L/100km), anlık depo seviyesi ve marka tercihlerini (Shell, Opet, Petrol Ofisi, BP, TotalEnergies vb.) hesaba katarak en uygun yakıt duraklarını otomatik hesaplayan ve tek tıkla **Google Maps** uygulamasına aktaran modern bir Android uygulamasıdır.
+İçten yanmalı araçlar için yakıt durağı planlayıcı. Deponuzun hacmini, ortalama
+tüketiminizi ve anlık doluluk oranını girersiniz; uygulama güzergah üzerinde
+rezerve düşmeden nerede yakıt almanız gerektiğini hesaplar ve rotayı duraklarla
+birlikte Google Maps'e aktarır.
 
----
+Elektrikli araçlardaki ABRP mantığının benzin, motorin ve LPG karşılığı.
 
-## 🌟 Öne Çıkan Özellikler
+## Nasıl çalışır
 
-1. **Akıllı Tüketim & Depo Simülasyonu:**
-   * 100 km'de kaç litre yaktığınızı, deponuzun kaç litre olduğunu ve anlık doluluk oranını girin.
-   * Algoritma, yakıtınız rezerve (%15) düşmeden önce otoyol ve ana arterler üzerindeki en uygun noktayı hesaplar.
-2. **Türk Akaryakıt Markaları Filtreleme:**
-   * **Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz, TP (Türkiye Petrolleri)** ve diğerleri.
-   * Şirket aracı / Taşıt Tanıma (Shell Taşıt Tanıma, Opet Otobil vb.) veya sadakat kartınıza göre sadece istediğiniz markalarda durak planlar.
-3. **Yakıt Türü Desteği:**
-   * **Benzin (95 Oktan)**
-   * **Motorin (Dizel)**
-   * **LPG (Otogaz):** Özellikle Türkiye'de küçük depolu LPG araçlarının sık dolum ihtiyacına ve sadece LPG bulunan istasyonlara özel filtreleme.
-4. **Google Maps Entegrasyonu (Tek Tıkla Navigasyon):**
-   * Hesaplanan optimum duraklar, Android Universal Intent ile resmi Google Maps uygulamasına aktarılır.
-   * Tüm istasyonlar ara durak (waypoint) olarak hazır gelir; tek tıkla sesli navigasyon başlar.
-5. **Uygulama İçi İnteraktif Rota & Durak Zaman Çizelgesi:**
-   * Her durak için: Varış anındaki kalan yakıt yüzdesi (%), depoyu fullemek için gereken litre, tahmini maliyet (₺) ve ana yoldan sapma mesafesi (km).
-   * İnteraktif rota harita önizlemesi.
-6. **Canlı Veri (anahtarsız, ücretsiz):**
-   * İstasyonlar her rota için OpenStreetMap Overpass API'sinden çekilir; gömülü/statik istasyon listesi yoktur, bu yüzden gerçekte var olmayan bir konuma durak konmaz.
-   * Pompa fiyatları Opet'in herkese açık il bazlı fiyat servisinden alınır. Otogaz (LPG) yayınlanmadığı için benzine oranlanarak tahmin edilir ve arayüzde "tahmini" olarak işaretlenir.
-   * Rota OSRM'den gelir; ağ yoksa dahili otoyol koridoru devreye girer.
-   * Google Maps/Places API kullanılmaz (ücretli). Konum araması Photon, ters kodlama Nominatim üzerindendir.
+Rota OSRM'den çekilir. Ardından güzergah koridorundaki akaryakıt istasyonları
+OpenStreetMap Overpass API'sinden indirilir; her istasyon rotaya izdüşürülerek
+"başlangıçtan kaç km sonra" ve "rotadan kaç km sapma" değerleri hesaplanır.
 
----
+Durak seçimi menzil kısıtlı bir açgözlü aramadır: yalnızca mevcut yakıtla
+gerçekten ulaşılabilen istasyonlar aday olur, bunlar arasından mümkün olduğunca
+ileride olan seçilir. Sapma mesafesi, marka tercihi ve OSM'de yakıt türünün
+doğrulanmış olup olmaması puanlamaya girer. Menzil içinde hiç uygun istasyon
+yoksa durak uydurulmaz, kullanıcı uyarılır.
 
-## 🛠️ Teknoloji Yığını
+Maliyet hesabı canlı pompa fiyatından yapılır. Son durakta depo tam
+doldurulmaz; varışa yetecek miktar, rezerv ve %15 güvenlik payı kadar yakıt
+alınır.
 
-* **Dil:** Kotlin 1.9.23 / Modern Android
-* **Arayüz (UI):** Jetpack Compose + Material 3 (Otomotiv odaklı koyu tema)
-* **Mimari:** Clean Architecture + MVVM (ViewModel, StateFlow, Repository, Domain Engine)
-* **Konum Arama:** Photon (OpenStreetMap tabanlı autocomplete) + Nominatim ters kodlama — API anahtarı gerekmez
-* **Ağ:** OkHttp + Kotlinx Serialization
-* **Veri:** OpenStreetMap Overpass (istasyonlar, ODbL) + Opet fiyat servisi (pompa fiyatları) + OSRM (rota)
+## Veri kaynakları
 
----
+Uygulama hiçbir API anahtarı istemez. Kullanılan servislerin tamamı ücretsiz ve
+anahtarsızdır.
 
-## 📂 Proje Yapısı
+| Veri | Kaynak |
+| --- | --- |
+| Akaryakıt istasyonları | OpenStreetMap Overpass API (ODbL) |
+| Pompa fiyatları | Opet il bazlı fiyat servisi |
+| Sürüş rotası | OSRM |
+| Adres arama | Photon |
+| Ters coğrafi kodlama | Nominatim |
+| Cihaz konumu | FusedLocationProvider |
 
-```
-appidea/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/yakitrotam/app/
-│   │   │   │   ├── MainActivity.kt             # Ana Activity ve ekran yönlendirici
-│   │   │   │   ├── data/
-│   │   │   │   │   ├── model/
-│   │   │   │   │   │   ├── FuelBrand.kt        # Markalar, renkler, kimlikler
-│   │   │   │   │   │   ├── FuelType.kt         # Benzin, Dizel, LPG ve yedek fiyatlar
-│   │   │   │   │   │   ├── FuelPriceSnapshot.kt # Canlı pompa fiyatı anlık görüntüsü
-│   │   │   │   │   │   ├── VehicleProfile.kt   # Depo, tüketim ve menzil formülleri
-│   │   │   │   │   │   ├── GasStation.kt       # İstasyon özellikleri ve koordinatlar
-│   │   │   │   │   │   └── TripModels.kt       # Duraklar, hesaplanan seyahat özeti
-│   │   │   │   │   └── repository/
-│   │   │   │   │       ├── GasStationRepository.kt # Marka & koridor arama
-│   │   │   │   │       └── RouteRepository.kt      # OSRM + yedek rota koridorları
-│   │   │   │   ├── domain/
-│   │   │   │   │   └── FuelOptimizerEngine.kt  # Depo simülasyonu & durak optimizasyon algoritması
-│   │   │   │   ├── ui/
-│   │   │   │   │   ├── theme/                  # Renkler, tipografi ve tema
-│   │   │   │   │   ├── components/             # FuelGaugeCard, BrandFilterBar, FuelStopTimelineCard, RouteMiniMap
-│   │   │   │   │   ├── screens/                # TripPlannerScreen, RouteSummaryScreen
-│   │   │   │   │   └── viewmodel/              # TripViewModel (StateFlow)
-│   │   │   │   └── util/
-│   │   │   │       ├── GeoUtils.kt             # Haversine, cross-track, interpolasyon
-│   │   │   │       └── GoogleMapsLauncher.kt   # Google Maps intent başlatıcı
-│   │   │   └── res/                            # String ve tema kaynakları
-│   │   └── test/java/com/yakitrotam/app/       # Birim testleri (GeoUtils, FuelOptimizer, MapsIntent)
-│   ├── build.gradle.kts
-│   └── proguard-rules.pro
-├── gradle/
-│   ├── libs.versions.toml                      # Version catalog
-│   └── wrapper/gradle-wrapper.properties
-├── build.gradle.kts
-└── settings.gradle.kts
+Google Places ve Maps SDK çağrı başına ücretlendirildiği için kullanılmıyor.
+Google Maps yalnızca hazır rotayı açmak üzere Android intent'i ile çağrılıyor,
+bu ücretsizdir.
+
+İstasyon verisi uygulamaya gömülü değildir, her rota için yeniden çekilir.
+Böylece gerçekte var olmayan bir konuma durak konmaz.
+
+Opet servisi benzin ve motorini yayınlıyor, otogaz yayınlamıyor. LPG fiyatı
+benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor.
+
+## Özellikler
+
+- Depo hacmi, L/100km tüketim, anlık doluluk ve rezerv eşiğine göre menzil
+  simülasyonu.
+- Benzin, motorin ve LPG. İstasyonun ilgili yakıtı sunup sunmadığı OSM
+  etiketlerinden okunur.
+- Marka tercihi (Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz,
+  Türkiye Petrolleri, Alpet, Lukoil). Tercih katı bir filtre değil puanlama
+  kriteridir; menzil içinde tercih edilen marka yoksa sürücü yolda bırakılmaz.
+- Durak başına: varışta kalan yakıt yüzdesi ve litresi, alınacak litre, tahmini
+  tutar, ana yoldan sapma mesafesi.
+- Yolculuğun yakıt maliyeti, pompada ödenecek toplam ve 100 km başına maliyet
+  dökümü.
+- Rota ve durakların çizim önizlemesi.
+- Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
+
+## Çalıştırma
+
+Android Studio'da projeyi açıp Gradle senkronizasyonunu bekleyin, ardından bir
+emülatör veya USB ile bağlı cihaz seçip `app` yapılandırmasını çalıştırın.
+
+Terminalden:
+
+```bash
+./gradlew installDebug
 ```
 
----
+API anahtarı veya `local.properties` yapılandırması gerekmez. Uygulamanın
+internet erişimi olması yeterlidir.
 
-## 🚀 Projeyi Çalıştırma (Android Studio)
+## Testler
 
-1. **Android Studio**'yu açın.
-2. `Open` seçeneği ile `d:\appidea` klasörünü seçin.
-3. Android Studio Gradle senkronizasyonunu otomatik tamamlayacaktır.
-4. Bir Android emülatör veya USB ile bağlı gerçek Android cihaz seçip **Run ('app')** butonuna basın.
-
-> Hiçbir API anahtarı gerekmez. İstasyon, fiyat, rota ve adres araması için kullanılan servislerin tamamı ücretsiz ve anahtarsızdır; uygulamanın internet erişimi olması yeterlidir.
-
----
-
-## 📦 APK ve otomatik yayın
-
-`main` dalına gönderilen her değişiklikte `.github/workflows/android-release.yml` otomatik olarak:
-
-1. Birim testlerini çalıştırır.
-2. Sürüm numarasını pipeline numarasıyla artırır.
-3. Aynı release anahtarıyla imzalı APK üretir.
-4. APK'yı **Actions Artifacts** ve **GitHub Releases** alanına yükler.
-
-En güncel APK şu sayfadan indirilebilir:
-
-```text
-https://github.com/ziewenn/yakitrotam/releases/latest
-```
-
-Telefonda GitHub sürümlerini takip ederek güncelleme bildirimi almak için [Obtainium](https://github.com/ImranR98/Obtainium) kullanılabilir. Kaynak adresi olarak bu reponun URL'sini eklemek yeterlidir. Android güvenlik modeli nedeniyle mağaza dışı normal uygulamalar sessiz kurulum yapamaz; güncellemede Android'in kurulum onayı gösterilir.
-
-CI imza anahtarının yerel kurtarma kopyası `D:\\YakitRotam-signing-backup` klasöründedir. Bu klasör gizli tutulmalı ve güvenli bir harici konuma yedeklenmelidir. Anahtar kaybolursa daha önce yüklenen APK'nın üstüne güncelleme kurulamaz.
-
----
-
-## 🧪 Birim Testleri Çalıştırma
-
-Terminalden veya Android Studio içinden:
 ```bash
 ./gradlew test
 ```
-* `GeoUtilsTest`: Mesafe ve rota kesişim formüllerini doğrular.
-* `FuelOptimizerEngineTest`: Depo tüketim modelini, marka filtrelemesini ve durak üretimini test eder.
-* `GoogleMapsIntentTest`: Üretilen Google Maps URL formatının durak parametrelerini doğru taşıdığını doğrular.
+
+| Test | Kapsam |
+| --- | --- |
+| `GeoUtilsTest` | Mesafe, rota izdüşümü ve interpolasyon formülleri |
+| `FuelOptimizerEngineTest` | Menzil kısıtı, marka puanlaması, maliyet hesabı |
+| `DemoRoutePlanTest` | Gerçek OSRM rotası ve 391 gerçek OSM istasyonuyla uçtan uca plan |
+| `GoogleMapsIntentTest` | Üretilen Maps URL'sinin durak parametreleri |
+
+`DemoRoutePlanTest` canlı servislerden alınmış İstanbul-Ankara verisini
+`app/src/test/resources/demo/` altından okur. Ağa çıkmaz, ama gerçek veriyle
+çalıştığı için seçilen durakların gerçekten var olan istasyonlar olduğunu ve
+rotanın 6 km'lik koridorunda kaldığını doğrular.
+
+## APK ve otomatik yayın
+
+`main` dalına gönderilen her değişiklikte
+[`.github/workflows/android-release.yml`](.github/workflows/android-release.yml)
+testleri çalıştırır, sürüm numarasını pipeline numarasıyla artırır, aynı release
+anahtarıyla imzalı APK üretir ve GitHub Releases'e yükler.
+
+En güncel APK: https://github.com/ziewenn/yakitrotam/releases/latest
+
+Güncelleme bildirimi almak için [Obtainium](https://github.com/ImranR98/Obtainium)
+kullanılabilir; kaynak olarak bu reponun URL'sini eklemek yeterlidir. Android
+güvenlik modeli nedeniyle mağaza dışı uygulamalar sessiz kurulum yapamaz,
+güncellemede kurulum onayı istenir.
+
+CI imza anahtarının yerel kurtarma kopyası `D:\YakitRotam-signing-backup`
+klasöründedir. Anahtar kaybolursa daha önce yüklenen APK'nın üstüne güncelleme
+kurulamaz; bu klasör güvenli bir harici konuma yedeklenmelidir.
+
+## Teknik
+
+Kotlin 1.9.23, Jetpack Compose ve Material 3, tek Activity. Katmanlar ViewModel,
+repository ve saf Kotlin hesaplama motoru olarak ayrılmış; durum StateFlow ile
+taşınıyor. Ağ için OkHttp, serileştirme için kotlinx.serialization kullanılıyor.
+
+```
+app/src/main/java/com/yakitrotam/app/
+├── MainActivity.kt
+├── data/
+│   ├── model/
+│   │   ├── FuelBrand.kt            Markalar, renkler, OSM etiket eşlemesi
+│   │   ├── FuelPriceSnapshot.kt    Pompa fiyatı anlık görüntüsü
+│   │   ├── GasStation.kt           İstasyon ve OSM üzerinden yakıt bilgisi
+│   │   ├── TripModels.kt           Duraklar ve seyahat özeti
+│   │   └── VehicleProfile.kt       Depo, tüketim, menzil formülleri
+│   └── repository/
+│       ├── FuelPriceRepository.kt  Opet fiyat servisi, il eşlemesi, önbellek
+│       ├── GasStationRepository.kt İstasyon önbelleği ve yakıt/marka filtresi
+│       ├── LocationService.kt      Photon arama, Nominatim, cihaz konumu
+│       ├── OverpassStationSource.kt Koridor sorgusu ve OSM etiket ayrıştırma
+│       └── RouteRepository.kt      OSRM ve çevrimdışı koridor yedeği
+├── domain/
+│   └── FuelOptimizerEngine.kt      Menzil simülasyonu ve durak seçimi
+├── ui/
+│   ├── components/                 Kadran, fiyat şeridi, zaman çizelgesi, harita
+│   ├── screens/                    Planlama ve özet ekranları
+│   ├── theme/
+│   └── viewmodel/
+└── util/
+    ├── GeoUtils.kt                 Haversine, rota izdüşümü, interpolasyon
+    └── GoogleMapsLauncher.kt       Maps intent'i
+```
+
+## Bilinen sınırlar
+
+- LPG fiyatı tahminidir. Ücretsiz ve makine okunabilir bir otogaz fiyat kaynağı
+  bulunamadı.
+- İstasyon bilgisi OSM'nin kalitesine bağlıdır. Markası veya yakıt türü
+  etiketlenmemiş istasyonlar "Diğer" olarak görünür ve puanlamada geri düşer.
+- Ağ yoksa rota dahili otoyol koridoruna düşer, istasyon listesi ise boş kalır;
+  bu durumda plan üretilmez.
+- Süre tahmini sabit ortalama hıza dayanır, trafiği hesaba katmaz.

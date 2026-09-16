@@ -64,6 +64,9 @@ ratio of the petrol price and is labelled as an estimate in the UI.
   100 km.
 - Vector preview of the route and its stops.
 - All stops are passed to Google Maps as waypoints.
+- The last vehicle settings (tank size, consumption, fuel type, fill level),
+  brand preference, origin and destination survive an app restart. Recently
+  picked places are listed first in the address search.
 
 ## Running it
 
@@ -91,6 +94,7 @@ internet access.
 | `FuelOptimizerEngineTest` | Range constraint, brand scoring, cost calculation |
 | `DemoRoutePlanTest` | End-to-end plan over a real OSRM route and 391 real OSM stations |
 | `GoogleMapsIntentTest` | Waypoint parameters in the generated Maps URL |
+| `PersistenceAndQueryTest` | Saving and restoring settings, station query covering the whole route |
 
 `DemoRoutePlanTest` reads Istanbul-Ankara data captured from the live services
 under `app/src/test/resources/demo/`. It makes no network calls, but because the
@@ -138,7 +142,8 @@ app/src/main/java/com/yakitrotam/app/
 │       ├── GasStationRepository.kt Station cache, fuel and brand filtering
 │       ├── LocationService.kt      Photon search, Nominatim, device location
 │       ├── OverpassStationSource.kt Corridor query and OSM tag parsing
-│       └── RouteRepository.kt      OSRM with an offline corridor fallback
+│       ├── RouteRepository.kt      OSRM with an offline corridor fallback
+│       └── TripPreferences.kt      Persists the last entered settings
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Range simulation and stop selection
 ├── ui/

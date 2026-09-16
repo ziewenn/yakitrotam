@@ -4,7 +4,11 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
+import android.os.CancellationSignal
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -15,6 +19,7 @@ import com.yakitrotam.app.data.model.PlaceSuggestion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -30,51 +35,121 @@ import kotlin.coroutines.resume
  * Photon (OpenStreetMap tabanlı, anahtarsız), ters kodlama Nominatim üzerinden yapılır.
  * Cihaz konumu için kullanılan FusedLocationProvider ücretsizdir.
  */
+
+/** Konum alınamadığında kullanıcıya doğrudan gösterilebilecek mesajı taşır. */
+class LocationUnavailableException(message: String) : Exception(message)
+
 class LocationService(
     private val routeRepository: RouteRepository = RouteRepository(),
     @Suppress("unused") private val applicationContext: Context? = null
 ) {
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
         .build()
 
+    /**
+     * Cihaz konumunu döndürür. Alınamazsa kullanıcıya gösterilebilecek bir
+     * mesajla [LocationUnavailableException] fırlatır.
+     *
+     * Önce Google Play Hizmetleri (FusedLocationProvider) denenir. Play Hizmetleri
+     * olmayan (ör. Huawei) veya bu servisi hatalı dönen telefonlarda Android'in
+     * kendi LocationManager'ına düşülür; eskiden bu durumda doğrudan hata veriliyordu.
+     */
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentLocation(context: Context): LatLng? = withContext(Dispatchers.IO) {
+    suspend fun getCurrentLocation(context: Context): LatLng {
         val hasFine = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val hasCoarse = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+        if (!hasFine && !hasCoarse) {
+            throw LocationUnavailableException(
+                "Konum izni verilmedi. Ayarlar > Uygulamalar > YakıtRotam > İzinler'den konuma izin verin."
+            )
+        }
 
-        if (!hasFine && !hasCoarse) return@withContext null
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        if (locationManager == null || !LocationManagerCompat.isLocationEnabled(locationManager)) {
+            throw LocationUnavailableException(
+                "Telefonun konum servisi kapalı. Bildirim panelinden konumu açıp tekrar deneyin."
+            )
+        }
 
+        return withTimeoutOrNull(FUSED_TIMEOUT_MS) { fusedLocation(context) }
+            ?: withTimeoutOrNull(PLATFORM_TIMEOUT_MS) { platformLocation(context, locationManager) }
+            ?: lastKnownLocation(locationManager)
+            ?: throw LocationUnavailableException(
+                "Konum bulunamadı. Açık bir alanda birkaç saniye bekleyip tekrar deneyin."
+            )
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun fusedLocation(context: Context): LatLng? = runCatching {
         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<LatLng?> { continuation ->
             val cancellation = CancellationTokenSource()
             continuation.invokeOnCancellation { cancellation.cancel() }
 
-            fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
+            fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
                 .addOnSuccessListener { location ->
                     if (location != null) {
                         continuation.resume(LatLng(location.latitude, location.longitude))
                     } else {
                         fusedClient.lastLocation
-                            .addOnSuccessListener { lastLocation ->
-                                continuation.resume(
-                                    lastLocation?.let { LatLng(it.latitude, it.longitude) }
-                                )
+                            .addOnSuccessListener { last ->
+                                continuation.resume(last?.let { LatLng(it.latitude, it.longitude) })
                             }
                             .addOnFailureListener { continuation.resume(null) }
                     }
                 }
                 .addOnFailureListener { continuation.resume(null) }
         }
+    }.getOrNull()
+
+    /**
+     * Play Hizmetleri olmadan, sırasıyla ağ ve GPS sağlayıcılarından tek seferlik konum.
+     *
+     * GPS yalnızca "yaklaşık konum" izni verilmişken de denenir: Android bu durumda
+     * sonucu bulanıklaştırarak döndürür. Eskiden bu izinde GPS atlanıyordu ve ağ
+     * konumu kapalı telefonlarda konum hiç alınamıyordu.
+     */
+    @SuppressLint("MissingPermission")
+    private suspend fun platformLocation(
+        context: Context,
+        locationManager: LocationManager
+    ): LatLng? {
+        val providers = listOf(
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.GPS_PROVIDER
+        ).filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
+
+        for (provider in providers) {
+            val location = runCatching {
+                suspendCancellableCoroutine<Location?> { continuation ->
+                    val signal = CancellationSignal()
+                    continuation.invokeOnCancellation { signal.cancel() }
+                    LocationManagerCompat.getCurrentLocation(
+                        locationManager,
+                        provider,
+                        signal,
+                        ContextCompat.getMainExecutor(context),
+                    ) { continuation.resume(it) }
+                }
+            }.getOrNull()
+            if (location != null) return LatLng(location.latitude, location.longitude)
+        }
+        return null
     }
+
+    @SuppressLint("MissingPermission")
+    private fun lastKnownLocation(locationManager: LocationManager): LatLng? =
+        runCatching { locationManager.getProviders(true) }.getOrDefault(emptyList())
+            .mapNotNull { runCatching { locationManager.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }
+            ?.let { LatLng(it.latitude, it.longitude) }
 
     suspend fun reverseGeocode(lat: Double, lng: Double): String = withContext(Dispatchers.IO) {
         try {
@@ -202,6 +277,8 @@ class LocationService(
     }
 
     private companion object {
+        const val FUSED_TIMEOUT_MS = 10_000L
+        const val PLATFORM_TIMEOUT_MS = 12_000L
         const val USER_AGENT = "YakitRotamAndroidApp/1.0 (contact: github.com/yakitrotam)"
     }
 }

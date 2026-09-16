@@ -13,8 +13,10 @@ import java.util.concurrent.TimeUnit
 class RouteRepository {
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(6, TimeUnit.SECONDS)
+        // Uzun rotalarda (overview=full, binlerce nokta) mobil ağda 6 sn yetmiyordu ve
+        // sessizce düz çizgi yedeğe düşülüyordu; istasyonlar da yanlış koridordan aranıyordu.
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
         .build()
 
     val popularCities: List<CityLocation> = listOf(

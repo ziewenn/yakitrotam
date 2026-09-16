@@ -202,7 +202,11 @@ fun PlaceSearchDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        if (searchQuery.isBlank()) "ÖNERİLEN KONUMLAR" else "ARAMA SONUÇLARI",
+                        when {
+                            searchQuery.isNotBlank() -> "ARAMA SONUÇLARI"
+                            searchResults.any { it.source == PlaceSource.RECENT } -> "SON ARANANLAR"
+                            else -> "ÖNERİLEN KONUMLAR"
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         color = TextMuted,
                         letterSpacing = 0.8.sp
@@ -245,7 +249,7 @@ fun PlaceSearchDialog(
                                     CircularProgressIndicator(Modifier.size(20.dp), color = PrimaryBlue, strokeWidth = 2.dp)
                                 } else {
                                     Icon(
-                                        if (place.source == PlaceSource.LOCAL) Icons.Default.History else Icons.Default.LocationOn,
+                                        if (place.source == PlaceSource.RECENT) Icons.Default.History else Icons.Default.LocationOn,
                                         null,
                                         tint = PrimaryBlue,
                                         modifier = Modifier.size(21.dp)

@@ -64,6 +64,9 @@ benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor
   dökümü.
 - Rota ve durakların çizim önizlemesi.
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
+- Son girilen araç bilgileri (depo hacmi, tüketim, yakıt türü, doluluk), marka
+  tercihi, kalkış ve varış noktası uygulama kapatılıp açılınca korunur. Adres
+  aramasında son seçilen yerler en üstte gösterilir.
 
 ## Çalıştırma
 
@@ -91,6 +94,7 @@ internet erişimi olması yeterlidir.
 | `FuelOptimizerEngineTest` | Menzil kısıtı, marka puanlaması, maliyet hesabı |
 | `DemoRoutePlanTest` | Gerçek OSRM rotası ve 391 gerçek OSM istasyonuyla uçtan uca plan |
 | `GoogleMapsIntentTest` | Üretilen Maps URL'sinin durak parametreleri |
+| `PersistenceAndQueryTest` | Ayarların kaydedilip geri yüklenmesi, istasyon sorgusunun rotayı kapsaması |
 
 `DemoRoutePlanTest` canlı servislerden alınmış İstanbul-Ankara verisini
 `app/src/test/resources/demo/` altından okur. Ağa çıkmaz, ama gerçek veriyle
@@ -136,7 +140,8 @@ app/src/main/java/com/yakitrotam/app/
 │       ├── GasStationRepository.kt İstasyon önbelleği ve yakıt/marka filtresi
 │       ├── LocationService.kt      Photon arama, Nominatim, cihaz konumu
 │       ├── OverpassStationSource.kt Koridor sorgusu ve OSM etiket ayrıştırma
-│       └── RouteRepository.kt      OSRM ve çevrimdışı koridor yedeği
+│       ├── RouteRepository.kt      OSRM ve çevrimdışı koridor yedeği
+│       └── TripPreferences.kt      Son girilen ayarların saklanması
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Menzil simülasyonu ve durak seçimi
 ├── ui/

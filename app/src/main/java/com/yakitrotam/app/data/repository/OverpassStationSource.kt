@@ -5,12 +5,17 @@ import com.yakitrotam.app.data.model.GasStation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.util.GeoUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.selects.select
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.cos
 
 /**
  * Akaryakıt istasyonlarını OpenStreetMap / Overpass API'den canlı olarak çeker.
@@ -24,37 +29,40 @@ class OverpassStationSource(
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(70, TimeUnit.SECONDS)
         .build()
 
     /**
-     * Rota koridorundaki ([corridorMeters] metre yarıçapında) tüm akaryakıt istasyonlarını getirir.
+     * Rota koridorundaki tüm akaryakıt istasyonlarını getirir.
      *
-     * Rota binlerce nokta içerebildiği için sorgu öncesi ~[samplingKm] km aralıkla seyreltilir;
-     * aksi halde Overpass sorgu gövdesi yüzlerce KB olur ve sunucu reddeder.
+     * Sunucular aynı anda sorgulanır, ilk dolu cevap kullanılır: Overpass
+     * sunucularından biri yoğunken diğeri çoğu zaman saniyeler içinde cevap verir.
      */
-    suspend fun fetchAlongRoute(
-        routePoints: List<LatLng>,
-        corridorMeters: Int = 3000,
-        samplingKm: Double = 8.0
-    ): List<GasStation> = withContext(Dispatchers.IO) {
-        if (routePoints.isEmpty()) return@withContext emptyList()
+    suspend fun fetchAlongRoute(routePoints: List<LatLng>): List<GasStation> {
+        if (routePoints.isEmpty()) return emptyList()
+        val query = buildCorridorQuery(routePoints)
 
-        val sampled = downsample(routePoints, samplingKm)
-        val coordinateList = sampled.joinToString(",") {
-            "%.5f,%.5f".format(java.util.Locale.US, it.latitude, it.longitude)
-        }
-        val query = """
-            [out:json][timeout:60];
-            nwr["amenity"="fuel"](around:$corridorMeters,$coordinateList);
-            out center tags;
-        """.trimIndent()
+        return coroutineScope {
+            val pending = endpoints.map { endpoint ->
+                async {
+                    runCatching {
+                        runInterruptible(Dispatchers.IO) { requestStations(endpoint, query) }
+                    }.getOrDefault(emptyList())
+                }
+            }.toMutableList()
 
-        for (endpoint in endpoints) {
-            val stations = runCatching { requestStations(endpoint, query) }.getOrNull()
-            if (!stations.isNullOrEmpty()) return@withContext stations
+            while (pending.isNotEmpty()) {
+                val (job, stations) = select {
+                    pending.forEach { job -> job.onAwait { job to it } }
+                }
+                pending.remove(job)
+                if (stations.isNotEmpty()) {
+                    pending.forEach { it.cancel() }
+                    return@coroutineScope stations
+                }
+            }
+            emptyList()
         }
-        emptyList()
     }
 
     private fun requestStations(endpoint: String, query: String): List<GasStation> {
@@ -117,22 +125,6 @@ class OverpassStationSource(
         return stations
     }
 
-    /** Rotayı yaklaşık [stepKm] aralıklarla seyreltir; ilk ve son nokta korunur. */
-    private fun downsample(points: List<LatLng>, stepKm: Double): List<LatLng> {
-        if (points.size <= 2) return points
-        val result = mutableListOf(points.first())
-        var accumulated = 0.0
-        for (i in 1 until points.size - 1) {
-            accumulated += GeoUtils.distanceKm(points[i - 1], points[i])
-            if (accumulated >= stepKm) {
-                result.add(points[i])
-                accumulated = 0.0
-            }
-        }
-        result.add(points.last())
-        return result
-    }
-
     private fun JSONObject.yesNo(key: String): Boolean? = when (optString(key).lowercase()) {
         "" -> null
         "no", "false" -> false
@@ -152,11 +144,63 @@ class OverpassStationSource(
     }
 
     companion object {
+        /**
+         * Rotayı ~[chunkKm] km'lik parçalara bölüp her parçanın sınır kutusunu
+         * [paddingKm] genişleterek tek bir birleşik sorgu üretir.
+         *
+         * Eskiden tek bir `around:` sorgusu kullanılıyordu; 700 km'lik rotada
+         * (ör. Gebze-Altunhisar) iki sunucuda da 60 sn'de zaman aşımına düşüyordu.
+         * Kutu sorguları mekânsal indeksi kullanır, aynı rota ~7 sn'de döner.
+         * Kutuların fazladan yakaladığı istasyonları motor sapma mesafesiyle eler.
+         */
+        internal fun buildCorridorQuery(
+            routePoints: List<LatLng>,
+            chunkKm: Double = 25.0,
+            paddingKm: Double = 3.5
+        ): String {
+            val boxes = mutableListOf<String>()
+            var chunk = mutableListOf(routePoints.first())
+            var accumulated = 0.0
+
+            fun flush() {
+                val minLat = chunk.minOf { it.latitude }
+                val maxLat = chunk.maxOf { it.latitude }
+                val latPad = paddingKm / 111.32
+                val lonPad = paddingKm / (111.32 * cos(Math.toRadians((minLat + maxLat) / 2.0)))
+                boxes.add(
+                    String.format(
+                        Locale.US,
+                        "nwr[\"amenity\"=\"fuel\"](%.5f,%.5f,%.5f,%.5f);",
+                        minLat - latPad,
+                        chunk.minOf { it.longitude } - lonPad,
+                        maxLat + latPad,
+                        chunk.maxOf { it.longitude } + lonPad
+                    )
+                )
+            }
+
+            for (i in 1 until routePoints.size) {
+                accumulated += GeoUtils.distanceKm(routePoints[i - 1], routePoints[i])
+                chunk.add(routePoints[i])
+                if (accumulated >= chunkKm) {
+                    flush()
+                    chunk = mutableListOf(routePoints[i])
+                    accumulated = 0.0
+                }
+            }
+            if (chunk.size > 1 || boxes.isEmpty()) flush()
+
+            return boxes.joinToString(
+                separator = "\n",
+                prefix = "[out:json][timeout:60];\n(\n",
+                postfix = "\n);\nout center tags;"
+            )
+        }
+
         private const val USER_AGENT = "YakitRotam/1.0 (Android; OSM fuel station lookup)"
         private val GASOLINE_TAGS = listOf(
             "fuel:octane_95", "fuel:octane_91", "fuel:octane_98", "fuel:octane_100", "fuel:e10"
         )
-        // kumi.systems uzun koridor sorgularında belirgin şekilde hızlı; ana sunucu 504 verebiliyor.
         val DEFAULT_ENDPOINTS = listOf(
             "https://overpass.kumi.systems/api/interpreter",
             "https://overpass-api.de/api/interpreter"

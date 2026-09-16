@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Route
@@ -80,12 +81,14 @@ fun TripPlannerScreen(
     onSelectDestination: (CityLocation) -> Unit,
     onSwapLocations: () -> Unit,
     onUseCurrentLocation: () -> Unit,
+    onLocationPermissionDenied: () -> Unit,
     onSearchPlaces: suspend (String) -> List<PlaceSuggestion>,
     onResolvePlace: suspend (PlaceSuggestion) -> CityLocation?,
     onUpdateProfile: (VehicleProfile) -> Unit,
     onToggleBrand: (FuelBrand) -> Unit,
     onSelectAllBrands: () -> Unit,
     onCalculateTrip: () -> Unit,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showOriginSearch by remember { mutableStateOf(false) }
@@ -96,7 +99,7 @@ fun TripPlannerScreen(
     ) { permissions ->
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) onUseCurrentLocation()
+        if (granted) onUseCurrentLocation() else onLocationPermissionDenied()
     }
 
     Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
@@ -141,23 +144,7 @@ fun TripPlannerScreen(
                 onSelectAll = onSelectAllBrands
             )
 
-            uiState.errorMessage?.let { message ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(ReserveRed.copy(alpha = 0.12f))
-                        .border(1.dp, ReserveRed.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Default.Warning, null, tint = ReserveRed, modifier = Modifier.size(20.dp))
-                    Text(message, color = TextPrimary, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-
-            Spacer(Modifier.height(96.dp))
+            Spacer(Modifier.height(if (uiState.errorMessage != null) 180.dp else 96.dp))
         }
 
         // Ana eylem her zaman parmağın altında kalsın diye ekrana sabit.
@@ -171,8 +158,35 @@ fun TripPlannerScreen(
                     )
                 )
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Hata mesajı butonun hemen üstünde durur; sayfanın sonunda kalınca
+            // kullanıcı göremiyor ve "hiçbir şey olmadı" sanıyordu.
+            uiState.errorMessage?.let { message ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF2A1416))
+                        .border(1.dp, ReserveRed.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Default.Warning, null, tint = ReserveRed, modifier = Modifier.size(20.dp))
+                    Text(
+                        message,
+                        color = TextPrimary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onDismissError, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, "Kapat", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
             Button(
                 onClick = onCalculateTrip,
                 enabled = !uiState.isLoading,

@@ -7,13 +7,19 @@ import com.yakitrotam.app.data.model.*
 import com.yakitrotam.app.data.repository.FuelPriceRepository
 import com.yakitrotam.app.data.repository.GasStationRepository
 import com.yakitrotam.app.data.repository.LocationService
+import com.yakitrotam.app.data.repository.LocationUnavailableException
 import com.yakitrotam.app.data.repository.RouteRepository
+import com.yakitrotam.app.data.repository.SavedTripState
+import com.yakitrotam.app.data.repository.TripPreferences
 import com.yakitrotam.app.domain.FuelOptimizerEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -35,22 +41,60 @@ class TripViewModel(
     private val stationRepository: GasStationRepository = GasStationRepository(),
     private val optimizerEngine: FuelOptimizerEngine = FuelOptimizerEngine(stationRepository),
     private val locationService: LocationService = LocationService(routeRepository),
-    private val fuelPriceRepository: FuelPriceRepository = FuelPriceRepository()
+    private val fuelPriceRepository: FuelPriceRepository = FuelPriceRepository(),
+    private val preferences: TripPreferences? = null
 ) : ViewModel() {
 
     val popularCities: List<CityLocation> = routeRepository.popularCities
 
+    /** Son oturumdan kalan girdiler; araç bilgileri her açılışta yeniden sorulmasın diye. */
+    private var saved: SavedTripState = preferences?.load() ?: SavedTripState()
+
     private val _uiState = MutableStateFlow(
         TripUiState(
-            origin = popularCities.firstOrNull { it.name.contains("İstanbul") } ?: popularCities[0],
-            destination = popularCities.firstOrNull { it.name.contains("Antalya") } ?: popularCities[1],
-            selectedBrands = emptySet() // Varsayılan: tüm markalar
+            origin = saved.origin
+                ?: popularCities.firstOrNull { it.name.contains("İstanbul") } ?: popularCities[0],
+            destination = saved.destination
+                ?: popularCities.firstOrNull { it.name.contains("Antalya") } ?: popularCities[1],
+            vehicleProfile = saved.vehicleProfile,
+            selectedBrands = saved.selectedBrands
         )
     )
     val uiState: StateFlow<TripUiState> = _uiState.asStateFlow()
 
     init {
         refreshPrices()
+
+        if (preferences != null) {
+            viewModelScope.launch {
+                _uiState
+                    .map { SavedInputs(it.vehicleProfile, it.selectedBrands, it.origin, it.destination) }
+                    .distinctUntilChanged()
+                    .drop(1) // açılışta yüklenen değeri geri yazmaya gerek yok
+                    .collect { inputs ->
+                        saved = saved.copy(
+                            vehicleProfile = inputs.vehicleProfile,
+                            selectedBrands = inputs.selectedBrands,
+                            origin = inputs.origin,
+                            destination = inputs.destination
+                        )
+                        preferences.save(saved)
+                    }
+            }
+        }
+    }
+
+    private data class SavedInputs(
+        val vehicleProfile: VehicleProfile,
+        val selectedBrands: Set<FuelBrand>,
+        val origin: CityLocation,
+        val destination: CityLocation
+    )
+
+    /** Aramadan seçilen yeri "son aranan yerler" listesinin başına ekler. */
+    private fun rememberPlace(place: CityLocation) {
+        saved = saved.withRecentPlace(place)
+        preferences?.save(saved)
     }
 
     /** Planlama ekranında güncel pompa fiyatını göstermek için arka planda çeker. */
@@ -62,11 +106,13 @@ class TripViewModel(
     }
 
     fun setOrigin(city: CityLocation) {
+        rememberPlace(city)
         _uiState.update { it.copy(origin = city, tripResult = null, errorMessage = null) }
         refreshPrices()
     }
 
     fun setDestination(city: CityLocation) {
+        rememberPlace(city)
         _uiState.update { it.copy(destination = city, tripResult = null, errorMessage = null) }
     }
 
@@ -101,8 +147,33 @@ class TripViewModel(
         _uiState.update { it.copy(selectedBrands = emptySet()) }
     }
 
-    suspend fun searchPlaces(query: String): List<PlaceSuggestion> =
-        locationService.searchPlaces(query)
+    /** Arama kutusu boşken önce son aranan yerler, ardından popüler şehirler gösterilir. */
+    suspend fun searchPlaces(query: String): List<PlaceSuggestion> {
+        if (query.isNotBlank()) return locationService.searchPlaces(query)
+
+        val recents = saved.recentPlaces.mapIndexed { index, place ->
+            PlaceSuggestion(
+                id = "recent-$index-${place.name}",
+                title = place.name,
+                subtitle = place.province,
+                source = PlaceSource.RECENT,
+                latitude = place.latitude,
+                longitude = place.longitude
+            )
+        }
+        val recentNames = recents.mapTo(HashSet()) { it.title }
+        return recents + locationService.searchPlaces("").filterNot { it.title in recentNames }
+    }
+
+    fun onLocationPermissionDenied() {
+        _uiState.update {
+            it.copy(
+                isLocationLoading = false,
+                errorMessage = "Konum izni verilmedi. Konumunuzu kullanmak için izin vermeniz gerekiyor; " +
+                    "kalkış noktasını aramadan da seçebilirsiniz."
+            )
+        }
+    }
 
     suspend fun resolvePlace(suggestion: PlaceSuggestion): CityLocation? =
         locationService.resolvePlace(suggestion)
@@ -115,34 +186,28 @@ class TripViewModel(
             _uiState.update { it.copy(isLocationLoading = true, errorMessage = null) }
             try {
                 val coords = locationService.getCurrentLocation(context)
-                if (coords != null) {
-                    val placeName = locationService.reverseGeocode(coords.latitude, coords.longitude)
-                    val originLocation = CityLocation(
-                        name = placeName,
-                        province = "Mevcut Konum",
-                        latitude = coords.latitude,
-                        longitude = coords.longitude
+                val placeName = locationService.reverseGeocode(coords.latitude, coords.longitude)
+                val originLocation = CityLocation(
+                    name = placeName,
+                    province = "Mevcut Konum",
+                    latitude = coords.latitude,
+                    longitude = coords.longitude
+                )
+                _uiState.update {
+                    it.copy(
+                        origin = originLocation,
+                        isLocationLoading = false,
+                        tripResult = null
                     )
-                    _uiState.update {
-                        it.copy(
-                            origin = originLocation,
-                            isLocationLoading = false,
-                            tripResult = null
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            isLocationLoading = false,
-                            errorMessage = "Konum alınamadı. Lütfen cihaz konumunuzun açık ve iznin verildiğinden emin olun."
-                        )
-                    }
                 }
+                refreshPrices()
+            } catch (e: LocationUnavailableException) {
+                _uiState.update { it.copy(isLocationLoading = false, errorMessage = e.message) }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLocationLoading = false,
-                        errorMessage = "Konum hatası: ${e.localizedMessage}"
+                        errorMessage = "Konum alınamadı: ${e.localizedMessage ?: "bilinmeyen hata"}"
                     )
                 }
             }
@@ -224,6 +289,10 @@ class TripViewModel(
                 }
             }
         }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun clearResult() {

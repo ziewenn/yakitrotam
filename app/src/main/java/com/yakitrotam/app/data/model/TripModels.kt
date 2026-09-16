@@ -13,7 +13,7 @@ data class CityLocation(
         get() = LatLng(latitude, longitude)
 }
 
-enum class PlaceSource { OPEN_STREET_MAP, LOCAL }
+enum class PlaceSource { OPEN_STREET_MAP, LOCAL, RECENT }
 
 data class PlaceSuggestion(
     val id: String,

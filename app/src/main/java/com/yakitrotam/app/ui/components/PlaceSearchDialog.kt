@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.yakitrotam.app.data.model.CityLocation
+import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.PlaceSource
 import com.yakitrotam.app.data.model.PlaceSuggestion
 import com.yakitrotam.app.ui.theme.DarkBackground
@@ -80,8 +82,11 @@ fun PlaceSearchDialog(
     onUseCurrentLocation: (() -> Unit)? = null,
     onSearchQueryChanged: suspend (String) -> List<PlaceSuggestion>,
     onResolvePlace: suspend (PlaceSuggestion) -> CityLocation?,
+    mapInitialCenter: LatLng?,
+    onDescribeMapPoint: suspend (LatLng) -> CityLocation,
     onDismiss: () -> Unit
 ) {
+    var showMapPicker by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
@@ -168,33 +173,26 @@ fun PlaceSearchDialog(
                 }
 
                 if (isOriginSearch && onUseCurrentLocation != null) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clickable {
+                    QuickActionRow(
+                        icon = Icons.Default.MyLocation,
+                        title = "Mevcut konumum",
+                        subtitle = "GPS ile başlangıç noktası seç",
+                        onClick = {
                             onUseCurrentLocation()
                             onDismiss()
-                        },
-                        color = PrimaryBlue.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(40.dp).clip(CircleShape)
-                                    .background(PrimaryBlue.copy(alpha = 0.18f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.MyLocation, null, tint = PrimaryBlue)
-                            }
-                            Column {
-                                Text("Mevcut konumum", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                                Text("GPS ile başlangıç noktası seç", color = TextSecondary, fontSize = 12.sp)
-                            }
                         }
-                    }
+                    )
                 }
+
+                QuickActionRow(
+                    icon = Icons.Default.Map,
+                    title = "Haritadan seç",
+                    subtitle = "Adresi olmayan bir noktayı haritada işaretle",
+                    onClick = {
+                        keyboardController?.hide()
+                        showMapPicker = true
+                    }
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
@@ -293,6 +291,52 @@ fun PlaceSearchDialog(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (showMapPicker) {
+        MapPickerDialog(
+            title = if (isOriginSearch) "Kalkış noktası" else "Varış noktası",
+            initialCenter = mapInitialCenter,
+            onDescribePoint = onDescribeMapPoint,
+            onPicked = { place ->
+                showMapPicker = false
+                onSelectPlace(place)
+                onDismiss()
+            },
+            onDismiss = { showMapPicker = false }
+        )
+    }
+}
+
+@Composable
+private fun QuickActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clickable(onClick = onClick),
+        color = PrimaryBlue.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape)
+                    .background(PrimaryBlue.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = PrimaryBlue)
+            }
+            Column {
+                Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = TextSecondary, fontSize = 12.sp)
             }
         }
     }

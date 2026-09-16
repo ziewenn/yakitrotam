@@ -1,19 +1,23 @@
 package com.yakitrotam.app.ads
 
 import android.app.Activity
+import android.util.Log
 import android.os.SystemClock
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -133,10 +137,19 @@ object Ads {
 /** İnce bant: ekranın büyük kısmını kaplayan "large" boyut yerine en fazla 60 dp. */
 private const val BANNER_MAX_HEIGHT_DP = 60
 
-/** Ekranın altına yerleşen, genişliğe uyarlanan banner reklam. */
+/**
+ * Ekranın altına yerleşen, genişliğe uyarlanan banner reklam.
+ *
+ * "Inline adaptive" boyutun yüksekliği reklam gelmeden bilinmez (AdSize.height = 0);
+ * eskiden alan bu 0 değerine göre ayrıldığı için banner hiç görünmüyordu. Artık AdView'a
+ * yüklenebilsin diye en fazla [BANNER_MAX_HEIGHT_DP] kadar yer verilir, ama yerleşimde
+ * reklam gelene kadar 0 yükseklik kaplanır; gelince reklamın gerçek yüksekliği kullanılır.
+ * Böylece reklam gelmediğinde ekranın altında boş bir şerit kalmaz.
+ */
 @Composable
 fun AdBanner(modifier: Modifier = Modifier) {
     if (!Ads.isReady) return
+    var loadedHeightPx by remember { mutableIntStateOf(0) }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val widthDp = maxWidth.value.toInt()
@@ -144,11 +157,31 @@ fun AdBanner(modifier: Modifier = Modifier) {
             AdSize.getInlineAdaptiveBannerAdSize(widthDp, BANNER_MAX_HEIGHT_DP)
         }
         AndroidView(
-            modifier = Modifier.fillMaxWidth().height(adSize.height.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .layout { measurable, constraints ->
+                    val slotPx = loadedHeightPx.takeIf { it > 0 } ?: BANNER_MAX_HEIGHT_DP.dp.roundToPx()
+                    val placeable = measurable.measure(
+                        constraints.copy(minHeight = slotPx, maxHeight = slotPx)
+                    )
+                    layout(placeable.width, loadedHeightPx) { placeable.place(0, 0) }
+                }
+                .alpha(if (loadedHeightPx > 0) 1f else 0f),
             factory = { ctx ->
                 AdView(ctx).apply {
                     setAdSize(adSize)
                     adUnitId = BuildConfig.ADMOB_BANNER_ID
+                    adListener = object : AdListener() {
+                        override fun onAdLoaded() {
+                            loadedHeightPx = getAdSize()?.getHeightInPixels(ctx)?.takeIf { it > 0 }
+                                ?: (BANNER_MAX_HEIGHT_DP * ctx.resources.displayMetrics.density).toInt()
+                        }
+
+                        // Yenileme başarısız olursa önceki reklam ekranda kalır; alan kapatılmaz.
+                        override fun onAdFailedToLoad(error: LoadAdError) {
+                            Log.w("YakitRotamAds", "Banner yüklenemedi: ${error.code} ${error.message}")
+                        }
+                    }
                     loadAd(AdRequest.Builder().build())
                 }
             },

@@ -1,5 +1,6 @@
 package com.yakitrotam.app.data.repository
 
+import android.util.Log
 import com.yakitrotam.app.data.model.FuelPriceSnapshot
 import com.yakitrotam.app.data.model.FuelType
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +43,9 @@ class FuelPriceRepository(
             return@withContext cached
         }
 
-        val snapshot = runCatching { fetchSnapshot(provinceCode) }.getOrNull()
+        val snapshot = runCatching { fetchSnapshot(provinceCode) }
+            .onFailure { Log.w("FuelPriceRepository", "Fiyatlar alınamadı (il $provinceCode)", it) }
+            .getOrNull()
             ?: cached
             ?: FuelPriceSnapshot.fallback()
 
@@ -129,7 +132,10 @@ class FuelPriceRepository(
             .header("User-Agent", "YakitRotam/1.0 (Android)")
             .build()
         httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
+            if (!response.isSuccessful) {
+                Log.w("FuelPriceRepository", "HTTP ${response.code} ${response.request.url}")
+                return null
+            }
             return response.body?.string()?.takeIf { it.isNotBlank() }
         }
     }

@@ -1,6 +1,15 @@
 package com.yakitrotam.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.yakitrotam.app.data.model.StopAlternative
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,9 +66,11 @@ fun FuelStopTimelineCard(
     stop: FuelStop,
     fuelType: FuelType,
     onNavigateToStop: (FuelStop) -> Unit,
+    onSelectAlternative: (StopAlternative) -> Unit,
     modifier: Modifier = Modifier,
     isLast: Boolean = false
 ) {
+    var showAlternatives by remember(stop.station.id) { mutableStateOf(false) }
     val fuelPercent = stop.arrivalFuelLevelPercent
     val isCritical = fuelPercent <= 12.0
     val levelColor = when {
@@ -246,6 +257,52 @@ fun FuelStopTimelineCard(
                     Text("Yol tarifi", style = MaterialTheme.typography.titleMedium)
                 }
             }
+
+            if (stop.alternatives.isNotEmpty()) {
+                HorizontalDivider(color = DarkBorder)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { showAlternatives = !showAlternatives }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.SwapHoriz, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Başka istasyon (${stop.alternatives.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextSecondary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        if (showAlternatives) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (showAlternatives) "Gizle" else "Göster",
+                        tint = TextSecondary
+                    )
+                }
+
+                if (showAlternatives) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        stop.alternatives.forEach { alternative ->
+                            AlternativeRow(
+                                alternative = alternative,
+                                currentKm = stop.distanceFromOriginKm,
+                                onClick = {
+                                    showAlternatives = false
+                                    onSelectAlternative(alternative)
+                                }
+                            )
+                        }
+                        Text(
+                            "Seçince sonraki duraklar yeni istasyona göre yeniden hesaplanır.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -291,5 +348,54 @@ fun TimelineEndpoint(
             )
             Text(caption, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }
+    }
+}
+
+@Composable
+private fun AlternativeRow(
+    alternative: StopAlternative,
+    currentKm: Double,
+    onClick: () -> Unit
+) {
+    val kmDifference = (alternative.distanceFromOriginKm - currentKm).toInt()
+    val position = when {
+        kmDifference > 0 -> "$kmDifference km ileride"
+        kmDifference < 0 -> "${-kmDifference} km önce"
+        else -> "aynı noktada"
+    }
+    val detour = if (alternative.detourDistanceKm < 0.4) {
+        "yol üstü"
+    } else {
+        "${formatDecimal(alternative.detourDistanceKm)} km sapma"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(DarkSurfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        BrandBadge(brand = alternative.station.brand, size = 32)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                alternative.station.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "${alternative.distanceFromOriginKm.toInt()}. km · $position · $detour",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text("Seç", style = MaterialTheme.typography.titleMedium, color = AccentLime)
     }
 }

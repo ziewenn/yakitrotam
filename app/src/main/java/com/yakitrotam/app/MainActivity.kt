@@ -74,7 +74,8 @@ class MainActivity : ComponentActivity() {
                         }
                         RouteSummaryScreen(
                             tripResult = uiState.tripResult!!,
-                            onBackToPlanner = { viewModel.clearResult() }
+                            onBackToPlanner = { viewModel.clearResult() },
+                            onSelectAlternative = { index, id -> viewModel.selectAlternative(index, id) }
                         )
                     } else {
                         TripPlannerScreen(
@@ -86,6 +87,7 @@ class MainActivity : ComponentActivity() {
                             onLocationPermissionDenied = { viewModel.onLocationPermissionDenied() },
                             onSearchPlaces = { viewModel.searchPlaces(it) },
                             onResolvePlace = { viewModel.resolvePlace(it) },
+                            onDescribeMapPoint = { viewModel.describeMapPoint(it) },
                             onUpdateProfile = { viewModel.updateVehicleProfile(it) },
                             onToggleBrand = { viewModel.toggleBrand(it) },
                             onSelectAllBrands = { viewModel.selectAllBrands() },

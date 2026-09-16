@@ -37,6 +37,7 @@ anahtarsızdır.
 | Sürüş rotası | OSRM |
 | Adres arama | Photon |
 | Ters coğrafi kodlama | Nominatim |
+| Harita görüntüsü | OpenFreeMap (MapLibre ile) |
 | Cihaz konumu | FusedLocationProvider |
 
 Google Places ve Maps SDK çağrı başına ücretlendirildiği için kullanılmıyor.
@@ -62,7 +63,11 @@ benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor
   tutar, ana yoldan sapma mesafesi.
 - Yolculuğun yakıt maliyeti, pompada ödenecek toplam ve 100 km başına maliyet
   dökümü.
-- Rota ve durakların çizim önizlemesi.
+- Rota ve numaralı durakların gerçek harita üzerinde gösterimi.
+- Her durak için aynı bölgede, mevcut yakıtla ulaşılabilen en fazla 3 alternatif
+  istasyon; biri seçilince sonraki duraklar yeniden hesaplanır.
+- Adresi olmayan noktalar için haritadan konum seçme.
+- Planı düz metin olarak paylaşma (WhatsApp, SMS, e-posta).
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
 - Son girilen araç bilgileri (depo hacmi, tüketim, yakıt türü, doluluk), marka
   tercihi, kalkış ve varış noktası uygulama kapatılıp açılınca korunur. Adres
@@ -171,12 +176,13 @@ app/src/main/java/com/yakitrotam/app/
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Menzil simülasyonu ve durak seçimi
 ├── ui/
-│   ├── components/                 Kadran, fiyat şeridi, zaman çizelgesi, harita
+│   ├── components/                 Kadran, fiyat şeridi, zaman çizelgesi, MapLibre haritaları
 │   ├── screens/                    Planlama ve özet ekranları
 │   ├── theme/
 │   └── viewmodel/
 └── util/
     ├── GeoUtils.kt                 Haversine, rota izdüşümü, interpolasyon
+    ├── TripShareText.kt            Paylaşılan plan metni
     └── GoogleMapsLauncher.kt       Maps intent'i
 ```
 

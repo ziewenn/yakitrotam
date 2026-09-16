@@ -37,6 +37,7 @@ The app needs no API keys. Every service it talks to is free and keyless.
 | Driving route | OSRM |
 | Address search | Photon |
 | Reverse geocoding | Nominatim |
+| Map display | OpenFreeMap (via MapLibre) |
 | Device location | FusedLocationProvider |
 
 Google Places and the Maps SDK are billed per call, so they are not used. Google
@@ -62,7 +63,11 @@ ratio of the petrol price and is labelled as an estimate in the UI.
   estimated cost, detour from the main road.
 - Cost breakdown: fuel burned for the trip, total paid at the pump, cost per
   100 km.
-- Vector preview of the route and its stops.
+- Route and numbered stops drawn on a real map.
+- Up to 3 alternative stations per stop, in the same area and reachable on the
+  current fuel; picking one recalculates the following stops.
+- Pick a location on the map for places without an address.
+- Share the plan as plain text (WhatsApp, SMS, email).
 - All stops are passed to Google Maps as waypoints.
 - The last vehicle settings (tank size, consumption, fuel type, fill level),
   brand preference, origin and destination survive an app restart. Recently
@@ -173,12 +178,13 @@ app/src/main/java/com/yakitrotam/app/
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Range simulation and stop selection
 ├── ui/
-│   ├── components/                 Gauge, price strip, timeline, mini map
+│   ├── components/                 Gauge, price strip, timeline, MapLibre maps
 │   ├── screens/                    Planner and summary screens
 │   ├── theme/
 │   └── viewmodel/
 └── util/
     ├── GeoUtils.kt                 Haversine, route projection, interpolation
+    ├── TripShareText.kt            Shared plan text
     └── GoogleMapsLauncher.kt       Maps intent
 ```
 

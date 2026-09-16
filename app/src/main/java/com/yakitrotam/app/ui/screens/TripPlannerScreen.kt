@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.ads.AdBanner
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.FuelBrand
+import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.PlaceSuggestion
 import com.yakitrotam.app.data.model.VehicleProfile
 import com.yakitrotam.app.ui.components.BrandFilterBar
@@ -85,6 +86,7 @@ fun TripPlannerScreen(
     onLocationPermissionDenied: () -> Unit,
     onSearchPlaces: suspend (String) -> List<PlaceSuggestion>,
     onResolvePlace: suspend (PlaceSuggestion) -> CityLocation?,
+    onDescribeMapPoint: suspend (LatLng) -> CityLocation,
     onUpdateProfile: (VehicleProfile) -> Unit,
     onToggleBrand: (FuelBrand) -> Unit,
     onSelectAllBrands: () -> Unit,
@@ -240,6 +242,8 @@ fun TripPlannerScreen(
             },
             onSearchQueryChanged = onSearchPlaces,
             onResolvePlace = onResolvePlace,
+            mapInitialCenter = uiState.origin.latLng,
+            onDescribeMapPoint = onDescribeMapPoint,
             onDismiss = { showOriginSearch = false }
         )
     }
@@ -251,6 +255,8 @@ fun TripPlannerScreen(
             onSelectPlace = onSelectDestination,
             onSearchQueryChanged = onSearchPlaces,
             onResolvePlace = onResolvePlace,
+            mapInitialCenter = uiState.destination.latLng,
+            onDescribeMapPoint = onDescribeMapPoint,
             onDismiss = { showDestinationSearch = false }
         )
     }

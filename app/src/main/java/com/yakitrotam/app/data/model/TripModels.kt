@@ -34,7 +34,16 @@ data class FuelStop(
     val arrivalFuelLiters: Double,        // Kalan yakıt Litre
     val refuelLiters: Double,             // Depoyu tam doldurmak için gereken litre
     val estimatedRefuelCostTL: Double,    // Yaklaşık dolum maliyeti (TL)
-    val detourDistanceKm: Double          // Ana güzergahtan tek yön sapma mesafesi (km)
+    val detourDistanceKm: Double,         // Ana güzergahtan tek yön sapma mesafesi (km)
+    /** Aynı bölgede, mevcut yakıtla ulaşılabilen ve bu durağın yerine seçilebilecek istasyonlar. */
+    val alternatives: List<StopAlternative> = emptyList()
+)
+
+@Serializable
+data class StopAlternative(
+    val station: GasStation,
+    val distanceFromOriginKm: Double,
+    val detourDistanceKm: Double
 )
 
 @Serializable

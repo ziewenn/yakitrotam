@@ -28,7 +28,9 @@ class FuelOptimizerEngine(
         routePoints: List<LatLng>,
         vehicleProfile: VehicleProfile,
         preferredBrands: Set<FuelBrand> = emptySet(),
-        fuelPrice: FuelPriceSnapshot = FuelPriceSnapshot.fallback()
+        fuelPrice: FuelPriceSnapshot = FuelPriceSnapshot.fallback(),
+        /** Kullanıcının alternatiflerden seçtiği istasyonlar: durak sırası -> istasyon kimliği. */
+        forcedStationIds: Map<Int, String> = emptyMap()
     ): TripPlanResult {
         val cumulative = GeoUtils.cumulativeDistancesKm(routePoints)
         val totalDistanceKm = cumulative.lastOrNull() ?: 0.0
@@ -63,17 +65,15 @@ class FuelOptimizerEngine(
             // Rezerve dokunmadan varış noktasına yetiyorsa durak gerekmez.
             if (usableLiters >= litersToFinish) break
 
-            val chosen = chooseNextStop(
-                candidates = candidates,
-                usedStationIds = stops.mapTo(HashSet()) { it.station.id },
-                fromAlongKm = alongKm,
-                usableLiters = usableLiters,
-                consumptionRate = consumptionRate,
-                preferredBrands = preferredBrands,
-                fuelType = vehicleProfile.fuelType
-            )
+            val usedStationIds = stops.mapTo(HashSet()) { it.station.id }
+            val reachable = candidates.filter { candidate ->
+                candidate.station.id !in usedStationIds &&
+                    candidate.alongKm > alongKm + MIN_LEG_KM &&
+                    (candidate.alongKm - alongKm + candidate.detourKm)
+                        .toLiters(consumptionRate) <= usableLiters
+            }
 
-            if (chosen == null) {
+            if (reachable.isEmpty()) {
                 warning = if (candidates.isEmpty()) {
                     "Bu güzergahta OpenStreetMap üzerinde kayıtlı akaryakıt istasyonu bulunamadı."
                 } else {
@@ -82,6 +82,28 @@ class FuelOptimizerEngine(
                 }
                 break
             }
+
+            val farthestAlongKm = reachable.maxOf { it.alongKm }
+            val rank = { candidate: Candidate ->
+                score(candidate, farthestAlongKm, preferredBrands, vehicleProfile.fuelType)
+            }
+            // Pencere menzille orantılı: kısa menzilde 45 km'lik tolerans aracı erken durdururdu.
+            val windowKm = minOf(SELECTION_WINDOW_KM, (farthestAlongKm - alongKm) * 0.25)
+            val forcedId = forcedStationIds[stops.size + 1]
+            val chosen = reachable.firstOrNull { it.station.id == forcedId }
+                ?: reachable.filter { it.alongKm >= farthestAlongKm - windowKm }.minBy(rank)
+
+            // Aynı bölgedeki diğer seçenekler. OSM'de aynı istasyon hem nokta hem alan olarak
+            // kayıtlı olabildiği için seçilen durağa 300 m'den yakın olanlar tekrar sayılmaz.
+            val alternatives = reachable
+                .filter {
+                    it.station.id != chosen.station.id &&
+                        it.alongKm >= chosen.alongKm - ALTERNATIVE_RANGE_KM &&
+                        GeoUtils.distanceKm(it.station.location, chosen.station.location) > 0.3
+                }
+                .sortedBy(rank)
+                .take(MAX_ALTERNATIVES)
+                .map { StopAlternative(it.station, it.alongKm, it.detourKm) }
 
             val legKm = chosen.alongKm - alongKm
             // Sapma yakıtı: istasyona gidiş rotadan ayrılmayı gerektirir.
@@ -99,7 +121,8 @@ class FuelOptimizerEngine(
                     arrivalFuelLiters = arrivalFuel,
                     refuelLiters = refuelLiters,
                     estimatedRefuelCostTL = refuelLiters * pricePerLiter,
-                    detourDistanceKm = chosen.detourKm
+                    detourDistanceKm = chosen.detourKm,
+                    alternatives = alternatives
                 )
             )
 
@@ -154,45 +177,25 @@ class FuelOptimizerEngine(
     }
 
     /**
-     * Menzil içindeki istasyonlar arasından en uygun olanı seçer.
-     *
-     * Hedef mümkün olduğunca ileri gitmek (az durak), ama bunu az sapma ve
-     * tercih edilen marka için birkaç km feda edebilmek.
+     * Düşük puan daha iyi. Hedef mümkün olduğunca ileri gitmek (az durak), ama bunu
+     * az sapma ve tercih edilen marka için birkaç km feda edebilmek.
      */
-    private fun chooseNextStop(
-        candidates: List<Candidate>,
-        usedStationIds: Set<String>,
-        fromAlongKm: Double,
-        usableLiters: Double,
-        consumptionRate: Double,
+    private fun score(
+        candidate: Candidate,
+        farthestAlongKm: Double,
         preferredBrands: Set<FuelBrand>,
         fuelType: FuelType
-    ): Candidate? {
-        val reachable = candidates.filter { candidate ->
-            candidate.station.id !in usedStationIds &&
-                candidate.alongKm > fromAlongKm + MIN_LEG_KM &&
-                (candidate.alongKm - fromAlongKm + candidate.detourKm)
-                    .toLiters(consumptionRate) <= usableLiters
+    ): Double {
+        val brandPenalty = when {
+            preferredBrands.isEmpty() -> 0.0
+            candidate.station.brand in preferredBrands -> 0.0
+            else -> NON_PREFERRED_BRAND_PENALTY
         }
-        if (reachable.isEmpty()) return null
-
-        val farthestAlongKm = reachable.maxOf { it.alongKm }
-        // Pencere menzille orantılı: kısa menzilde 45 km'lik tolerans aracı erken durdururdu.
-        val windowKm = minOf(SELECTION_WINDOW_KM, (farthestAlongKm - fromAlongKm) * 0.25)
-        return reachable
-            .filter { it.alongKm >= farthestAlongKm - windowKm }
-            .minByOrNull { candidate ->
-                val brandPenalty = when {
-                    preferredBrands.isEmpty() -> 0.0
-                    candidate.station.brand in preferredBrands -> 0.0
-                    else -> NON_PREFERRED_BRAND_PENALTY
-                }
-                val unknownFuelPenalty = if (candidate.station.confirmsFuel(fuelType)) 0.0 else 2.0
-                val unnamedPenalty = if (candidate.station.brand == FuelBrand.DIGER) 3.0 else 0.0
-                candidate.detourKm * 3.0 +
-                    (farthestAlongKm - candidate.alongKm) * 0.2 +
-                    brandPenalty + unknownFuelPenalty + unnamedPenalty
-            }
+        val unknownFuelPenalty = if (candidate.station.confirmsFuel(fuelType)) 0.0 else 2.0
+        val unnamedPenalty = if (candidate.station.brand == FuelBrand.DIGER) 3.0 else 0.0
+        return candidate.detourKm * 3.0 +
+            (farthestAlongKm - candidate.alongKm) * 0.2 +
+            brandPenalty + unknownFuelPenalty + unnamedPenalty
     }
 
     /** Otoyol ağırlıklı ortalama 92 km/s + durak başına 12 dk mola. */
@@ -212,6 +215,10 @@ class FuelOptimizerEngine(
 
         /** Son durağa en fazla bu kadar km kala alternatif istasyonlar da değerlendirilir. */
         const val SELECTION_WINDOW_KM = 45.0
+
+        /** Alternatif istasyonlar seçilen durağın en fazla bu kadar km gerisinden aranır. */
+        const val ALTERNATIVE_RANGE_KM = 40.0
+        const val MAX_ALTERNATIVES = 3
 
         /** Son dolumda varış ihtiyacının üzerine bırakılan güvenlik payı. */
         const val FINAL_FILL_BUFFER = 1.15

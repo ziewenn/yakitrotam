@@ -119,6 +119,59 @@ class DemoRoutePlanTest {
         assertTrue(plan.arrivalFuelLiters >= 0.0)
     }
 
+    private val twoStopCar = VehicleProfile(
+        fuelType = FuelType.BENZIN,
+        consumptionPer100Km = 9.5,
+        tankCapacityLiters = 40.0,
+        currentLevelPercent = 30.0,
+        reserveThresholdPercent = 15.0
+    )
+
+    @Test
+    fun `her durak icin ulasilabilir alternatifler sunulur ve secilen alternatif uygulanir`() {
+        val route = loadRoute()
+        val engine = FuelOptimizerEngine(GasStationRepository(initialStations = loadStations()))
+        val plan = engine.calculateTripPlan(istanbul, ankara, route, twoStopCar, fuelPrice = price)
+
+        val first = plan.stops.first()
+        assertTrue("İlk durak için alternatif olmalı", first.alternatives.isNotEmpty())
+        assertTrue(first.alternatives.size <= 3)
+        first.alternatives.forEach { alt ->
+            assertNotEquals(first.station.id, alt.station.id)
+            // Başlangıç yakıtıyla (rezerv hariç) bu alternatife gerçekten ulaşılabilmeli.
+            val usable = twoStopCar.currentFuelLiters - twoStopCar.reserveLiters
+            val needed = (alt.distanceFromOriginKm + alt.detourDistanceKm) / 100.0 * twoStopCar.consumptionPer100Km
+            assertTrue("${alt.station.name} ulaşılamaz: $needed L > $usable L", needed <= usable + 1e-6)
+        }
+
+        val chosenAlternative = first.alternatives.last()
+        val replanned = engine.calculateTripPlan(
+            istanbul, ankara, route, twoStopCar,
+            fuelPrice = price,
+            forcedStationIds = mapOf(1 to chosenAlternative.station.id)
+        )
+        assertEquals(chosenAlternative.station.id, replanned.stops.first().station.id)
+        assertNull("Yeni plan da varışa ulaşmalı", replanned.warning)
+        assertTrue(replanned.arrivalFuelLiters >= 0.0)
+    }
+
+    @Test
+    fun `paylasim metni duraklari tutari ve kodlanmis rota baglantisini icerir`() {
+        val engine = FuelOptimizerEngine(GasStationRepository(initialStations = loadStations()))
+        val plan = engine.calculateTripPlan(istanbul, ankara, loadRoute(), twoStopCar, fuelPrice = price)
+
+        val text = com.yakitrotam.app.util.TripShareText.build(plan)
+        println(text)
+
+        assertTrue(text.startsWith("YakıtRotam yakıt planı"))
+        plan.stops.forEach { stop -> assertTrue(text.contains(stop.station.name)) }
+        assertTrue(text.contains("Pompada toplam"))
+        assertTrue(text.contains("https://www.google.com/maps/dir/?api=1"))
+        // Sohbet uygulamaları bağlantıyı "|" karakterinde kesmesin.
+        assertTrue(text.contains("waypoints=") && text.contains("%7C"))
+        assertFalse(text.contains("|"))
+    }
+
     private fun printPlan(plan: TripPlanResult, stationCount: Int) {
         println()
         println("=".repeat(78))

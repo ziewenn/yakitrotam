@@ -12,6 +12,7 @@ import com.yakitrotam.app.data.repository.RouteRepository
 import com.yakitrotam.app.data.repository.SavedTripState
 import com.yakitrotam.app.data.repository.TripPreferences
 import com.yakitrotam.app.domain.FuelOptimizerEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class TripUiState(
     val origin: CityLocation,
@@ -178,6 +180,10 @@ class TripViewModel(
     suspend fun resolvePlace(suggestion: PlaceSuggestion): CityLocation? =
         locationService.resolvePlace(suggestion)
 
+    /** Haritadan seçilen noktayı adrese çevirir. */
+    suspend fun describeMapPoint(point: LatLng): CityLocation =
+        locationService.describePoint(point.latitude, point.longitude)
+
     /**
      * GPS'ten anlık konumu alıp kalkış noktası yapar
      */
@@ -186,13 +192,7 @@ class TripViewModel(
             _uiState.update { it.copy(isLocationLoading = true, errorMessage = null) }
             try {
                 val coords = locationService.getCurrentLocation(context)
-                val placeName = locationService.reverseGeocode(coords.latitude, coords.longitude)
-                val originLocation = CityLocation(
-                    name = placeName,
-                    province = "Mevcut Konum",
-                    latitude = coords.latitude,
-                    longitude = coords.longitude
-                )
+                val originLocation = locationService.reverseGeocode(coords.latitude, coords.longitude)
                 _uiState.update {
                     it.copy(
                         origin = originLocation,
@@ -261,14 +261,17 @@ class TripViewModel(
 
                 _uiState.update { it.copy(loadingStep = "Duraklar hesaplanıyor...") }
 
-                val result = optimizerEngine.calculateTripPlan(
-                    origin = currentState.origin,
-                    destination = currentState.destination,
-                    routePoints = routePoints,
-                    vehicleProfile = currentState.vehicleProfile,
-                    preferredBrands = currentState.selectedBrands,
-                    fuelPrice = priceSnapshot
-                )
+                forcedStops = emptyMap()
+                val result = withContext(Dispatchers.Default) {
+                    optimizerEngine.calculateTripPlan(
+                        origin = currentState.origin,
+                        destination = currentState.destination,
+                        routePoints = routePoints,
+                        vehicleProfile = currentState.vehicleProfile,
+                        preferredBrands = currentState.selectedBrands,
+                        fuelPrice = priceSnapshot
+                    )
+                }
 
                 _uiState.update {
                     it.copy(
@@ -288,6 +291,36 @@ class TripViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /** Kullanıcının alternatiflerden seçtiği duraklar; yeni rota hesaplanınca sıfırlanır. */
+    private var forcedStops: Map<Int, String> = emptyMap()
+
+    /**
+     * [stopIndex]. durağı [stationId] istasyonuyla değiştirir ve planı yeniden hesaplar.
+     * Önceki duraklar korunur; sonraki duraklar yakıt durumu değiştiği için yeniden seçilir.
+     * İstasyon verisi zaten bellekte olduğundan ağa çıkılmaz.
+     */
+    fun selectAlternative(stopIndex: Int, stationId: String) {
+        val trip = _uiState.value.tripResult ?: return
+        forcedStops = trip.stops
+            .filter { it.stopIndex < stopIndex }
+            .associate { it.stopIndex to it.station.id } + (stopIndex to stationId)
+
+        viewModelScope.launch {
+            val updated = withContext(Dispatchers.Default) {
+                optimizerEngine.calculateTripPlan(
+                    origin = trip.origin,
+                    destination = trip.destination,
+                    routePoints = trip.routePoints,
+                    vehicleProfile = trip.vehicleProfile,
+                    preferredBrands = trip.preferredBrands,
+                    fuelPrice = trip.fuelPrice,
+                    forcedStationIds = forcedStops
+                )
+            }
+            _uiState.update { it.copy(tripResult = updated) }
         }
     }
 

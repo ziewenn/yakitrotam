@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,6 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,11 +69,13 @@ import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
 import com.yakitrotam.app.util.GoogleMapsLauncher
+import com.yakitrotam.app.util.TripShareText
 
 @Composable
 fun RouteSummaryScreen(
     tripResult: TripPlanResult,
     onBackToPlanner: () -> Unit,
+    onSelectAlternative: (stopIndex: Int, stationId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -90,18 +95,32 @@ fun RouteSummaryScreen(
                         .navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = { GoogleMapsLauncher.launchFullRouteInGoogleMaps(context, tripResult) },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentLime,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Icon(Icons.Default.Navigation, null, modifier = Modifier.size(21.dp))
-                        Spacer(Modifier.width(9.dp))
-                        Text("Haritalarda başlat", style = MaterialTheme.typography.titleLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { shareTripPlan(context, tripResult) },
+                            modifier = Modifier.height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentLime),
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true)
+                                .copy(brush = SolidColor(AccentLime.copy(alpha = 0.5f)))
+                        ) {
+                            Icon(Icons.Default.Share, null, modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("Paylaş", style = MaterialTheme.typography.titleMedium)
+                        }
+                        Button(
+                            onClick = { GoogleMapsLauncher.launchFullRouteInGoogleMaps(context, tripResult) },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentLime,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Icon(Icons.Default.Navigation, null, modifier = Modifier.size(21.dp))
+                            Spacer(Modifier.width(9.dp))
+                            Text("Haritalarda başlat", style = MaterialTheme.typography.titleLarge)
+                        }
                     }
                     Text(
                         text = if (tripResult.hasStops) {
@@ -234,6 +253,9 @@ fun RouteSummaryScreen(
                         fuelType = tripResult.vehicleProfile.fuelType,
                         onNavigateToStop = { selectedStop: FuelStop ->
                             GoogleMapsLauncher.launchTurnByTurnToStation(context, selectedStop)
+                        },
+                        onSelectAlternative = { alternative ->
+                            onSelectAlternative(stop.stopIndex, alternative.station.id)
                         }
                     )
                 }
@@ -403,4 +425,14 @@ private fun DataSourceFooter(tripResult: TripPlanResult) {
             color = TextMuted
         )
     }
+}
+
+/** Planı düz metin olarak sistemin paylaşım menüsüne verir (WhatsApp, SMS, e-posta...). */
+private fun shareTripPlan(context: android.content.Context, trip: TripPlanResult) {
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_SUBJECT, "YakıtRotam yakıt planı")
+        putExtra(android.content.Intent.EXTRA_TEXT, TripShareText.build(trip))
+    }
+    context.startActivity(android.content.Intent.createChooser(send, "Yakıt planını paylaş"))
 }

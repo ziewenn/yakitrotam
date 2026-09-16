@@ -151,23 +151,41 @@ class LocationService(
             .maxByOrNull { it.time }
             ?.let { LatLng(it.latitude, it.longitude) }
 
-    suspend fun reverseGeocode(lat: Double, lng: Double): String = withContext(Dispatchers.IO) {
+    /** GPS konumu için okunabilir etiket: "Konumum (Mahalle, İl)". */
+    suspend fun reverseGeocode(lat: Double, lng: Double): CityLocation {
+        val place = describePoint(lat, lng)
+        return place.copy(name = if (place.province.isBlank()) place.name else "Konumum (${place.name})")
+    }
+
+    /**
+     * Koordinatı Nominatim ile adrese çevirir. İl bilgisi ayrıca döndürülür; güncel
+     * pompa fiyatı il bazında çekildiği için kalkış noktasında gerekli.
+     * Adres bulunamazsa koordinatlı bir etiketle döner, istisna fırlatmaz.
+     */
+    suspend fun describePoint(lat: Double, lng: Double): CityLocation = withContext(Dispatchers.IO) {
         try {
-            val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=tr"
-            val json = getJsonObject(url)
-            val address = json?.optJSONObject("address")
+            val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=tr&zoom=16"
+            val address = getJsonObject(url)?.optJSONObject("address")
             if (address != null) {
-                val district = address.firstNonBlank("suburb", "district", "town", "city_district")
+                val local = address.firstNonBlank(
+                    "road", "suburb", "neighbourhood", "village", "district", "town", "city_district"
+                )
+                val district = address.firstNonBlank("town", "district", "city_district", "county")
                 val province = address.firstNonBlank("province", "city", "state")
-                val parts = listOf(district, province).filter(String::isNotBlank).distinct()
+                val parts = listOf(local, district, province).filter(String::isNotBlank).distinct()
                 if (parts.isNotEmpty()) {
-                    return@withContext "Konumum (${parts.joinToString(", ")})"
+                    return@withContext CityLocation(
+                        name = parts.take(2).joinToString(", "),
+                        province = province,
+                        latitude = lat,
+                        longitude = lng
+                    )
                 }
             }
         } catch (_: Exception) {
             // Koordinatlar yine de kullanılabildiği için okunabilir bir yedek etiket döndürülür.
         }
-        "Mevcut Konumum (%.4f, %.4f)".format(Locale.US, lat, lng)
+        CityLocation("Seçilen nokta (%.4f, %.4f)".format(Locale.US, lat, lng), "", lat, lng)
     }
 
     /** Photon üzerinden canlı yer arama; sonuç yoksa yerel popüler şehir listesine düşer. */

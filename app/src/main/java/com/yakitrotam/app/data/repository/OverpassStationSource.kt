@@ -4,17 +4,18 @@ import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.GasStation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.util.GeoUtils
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 import kotlin.math.cos
 
 /**
@@ -42,43 +43,68 @@ class OverpassStationSource(
         if (routePoints.isEmpty()) return emptyList()
         val query = buildCorridorQuery(routePoints)
 
-        return coroutineScope {
-            val pending = endpoints.map { endpoint ->
-                async {
-                    runCatching {
-                        runInterruptible(Dispatchers.IO) { requestStations(endpoint, query) }
-                    }.getOrDefault(emptyList())
-                }
-            }.toMutableList()
+        // Aynı rota farklı depo seviyesiyle yeniden hesaplanınca ağa hiç çıkılmaz.
+        synchronized(this) {
+            if (query == lastQuery && lastStations.isNotEmpty()) return lastStations
+        }
 
-            while (pending.isNotEmpty()) {
-                val (job, stations) = select {
-                    pending.forEach { job -> job.onAwait { job to it } }
+        val calls = endpoints.map { endpoint ->
+            httpClient.newCall(
+                Request.Builder()
+                    .url(endpoint)
+                    .header("User-Agent", USER_AGENT)
+                    .post(FormBody.Builder().add("data", query).build())
+                    .build()
+            )
+        }
+
+        val stations = try {
+            // Sunucular aynı anda sorgulanır, ilk dolu cevap kazanır. Kaybedenler
+            // Call.cancel() ile anında kapatılır: engelleyici execute() + coroutine
+            // iptali soket okumasını kesmediği için eskiden yavaş sunucunun 60+ sn'lik
+            // zaman aşımı bekleniyordu ve rota hesabı ~50 sn sürüyordu.
+            suspendCancellableCoroutine { continuation ->
+                continuation.invokeOnCancellation { calls.forEach(Call::cancel) }
+                var remaining = calls.size
+
+                fun finish(result: List<GasStation>) = synchronized(calls) {
+                    remaining--
+                    if (continuation.isActive && (result.isNotEmpty() || remaining == 0)) {
+                        continuation.resume(result)
+                    }
                 }
-                pending.remove(job)
-                if (stations.isNotEmpty()) {
-                    pending.forEach { it.cancel() }
-                    return@coroutineScope stations
+
+                calls.forEach { call ->
+                    call.enqueue(object : Callback {
+                        override fun onFailure(call: Call, e: IOException) = finish(emptyList())
+
+                        override fun onResponse(call: Call, response: Response) {
+                            val result = runCatching {
+                                response.use {
+                                    if (!it.isSuccessful) emptyList()
+                                    else parseElements(it.body?.string().orEmpty())
+                                }
+                            }.getOrDefault(emptyList())
+                            finish(result)
+                        }
+                    })
                 }
             }
-            emptyList()
+        } finally {
+            calls.forEach(Call::cancel)
         }
+
+        if (stations.isNotEmpty()) {
+            synchronized(this) {
+                lastQuery = query
+                lastStations = stations
+            }
+        }
+        return stations
     }
 
-    private fun requestStations(endpoint: String, query: String): List<GasStation> {
-        val request = Request.Builder()
-            .url(endpoint)
-            .header("User-Agent", USER_AGENT)
-            .post(FormBody.Builder().add("data", query).build())
-            .build()
-
-        httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return emptyList()
-            val body = response.body?.string().orEmpty()
-            if (body.isBlank()) return emptyList()
-            return parseElements(body)
-        }
-    }
+    private var lastQuery: String? = null
+    private var lastStations: List<GasStation> = emptyList()
 
     private fun parseElements(body: String): List<GasStation> {
         val elements = JSONObject(body).optJSONArray("elements") ?: return emptyList()
@@ -202,8 +228,9 @@ class OverpassStationSource(
             "fuel:octane_95", "fuel:octane_91", "fuel:octane_98", "fuel:octane_100", "fuel:e10"
         )
         val DEFAULT_ENDPOINTS = listOf(
+            "https://overpass-api.de/api/interpreter",
             "https://overpass.kumi.systems/api/interpreter",
-            "https://overpass-api.de/api/interpreter"
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
         )
     }
 }

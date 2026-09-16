@@ -235,7 +235,7 @@ fun FuelStopTimelineCard(
                     onClick = { onNavigateToStop(stop) },
                     shape = RoundedCornerShape(11.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentLime),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                         brush = SolidColor(AccentLime.copy(alpha = 0.45f))
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),

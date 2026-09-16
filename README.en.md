@@ -120,9 +120,29 @@ A local recovery copy of the CI signing key lives in
 installed over an already installed APK, so the folder should be backed up
 somewhere safe.
 
+## Ads
+
+The app uses AdMob: a thin banner at the bottom of the planner and summary
+screens, and a full-screen interstitial while a route is being calculated.
+Interstitials are at least 3 minutes apart. Users in the EEA and UK see Google's
+consent form (UMP) before any ad is requested.
+
+Debug builds always use Google's test ad unit IDs. For real ads in release
+builds, define these Actions secrets in the repository settings; without them
+release builds also ship with test ads:
+
+| Secret | Format |
+| --- | --- |
+| `ADMOB_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` |
+| `ADMOB_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+| `ADMOB_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+
+The Play Store bundle (AAB) is produced on every build as an Actions artifact;
+only the APK is attached to GitHub Releases.
+
 ## Technical notes
 
-Kotlin 1.9.23, Jetpack Compose with Material 3, single Activity. The layers are
+Kotlin 2.3, Jetpack Compose with Material 3, target SDK 36, single Activity. The layers are
 split into ViewModel, repositories and a pure Kotlin calculation engine, with
 state carried over StateFlow. OkHttp handles networking and kotlinx.serialization
 handles models.

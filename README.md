@@ -119,9 +119,29 @@ CI imza anahtarının yerel kurtarma kopyası `D:\YakitRotam-signing-backup`
 klasöründedir. Anahtar kaybolursa daha önce yüklenen APK'nın üstüne güncelleme
 kurulamaz; bu klasör güvenli bir harici konuma yedeklenmelidir.
 
+## Reklamlar
+
+Uygulama AdMob kullanır: planlama ve özet ekranlarının altında ince bir banner,
+rota hesaplanırken de tam ekran geçiş reklamı gösterilir. Geçiş reklamları
+arasında en az 3 dakika bırakılır. AB ve Birleşik Krallık kullanıcılarına reklam
+yüklenmeden önce Google'ın onay formu (UMP) gösterilir.
+
+Debug build her zaman Google'ın test reklam kimliklerini kullanır. Release
+build'de gerçek reklam çıkması için repo ayarlarında şu Actions secret'ları
+tanımlanmalıdır; tanımlı değilse release de test reklamlarıyla çıkar:
+
+| Secret | Örnek biçim |
+| --- | --- |
+| `ADMOB_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` |
+| `ADMOB_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+| `ADMOB_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+
+Play Store'a yüklenecek paket (AAB) her build'de Actions artifact'ı olarak
+üretilir; GitHub Release'e yalnızca APK eklenir.
+
 ## Teknik
 
-Kotlin 1.9.23, Jetpack Compose ve Material 3, tek Activity. Katmanlar ViewModel,
+Kotlin 2.3, Jetpack Compose ve Material 3, hedef SDK 36, tek Activity. Katmanlar ViewModel,
 repository ve saf Kotlin hesaplama motoru olarak ayrılmış; durum StateFlow ile
 taşınıyor. Ağ için OkHttp, serileştirme için kotlinx.serialization kullanılıyor.
 

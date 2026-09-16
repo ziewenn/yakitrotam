@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.yakitrotam.app.ads.AdBanner
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.PlaceSuggestion
@@ -144,7 +145,8 @@ fun TripPlannerScreen(
                 onSelectAll = onSelectAllBrands
             )
 
-            Spacer(Modifier.height(if (uiState.errorMessage != null) 180.dp else 96.dp))
+            // Sabit alt panel (buton + banner reklam) içeriğin son kartını örtmesin.
+            Spacer(Modifier.height(if (uiState.errorMessage != null) 250.dp else 170.dp))
         }
 
         // Ana eylem her zaman parmağın altında kalsın diye ekrana sabit.
@@ -218,6 +220,8 @@ fun TripPlannerScreen(
                     Text("Yakıt planımı oluştur", style = MaterialTheme.typography.titleLarge)
                 }
             }
+
+            AdBanner()
         }
     }
 

@@ -1,9 +1,12 @@
 package com.yakitrotam.app
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -12,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.yakitrotam.app.ads.Ads
 import com.yakitrotam.app.data.repository.GasStationRepository
 import com.yakitrotam.app.data.repository.LocationService
 import com.yakitrotam.app.data.repository.FuelPriceRepository
@@ -47,7 +51,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Android 15+ hedeflenince uygulama kenardan kenara çizilir; koyu tema için
+        // sistem çubuk simgeleri açık renkte tutulur.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        )
         super.onCreate(savedInstanceState)
+        Ads.initialize(this)
 
         setContent {
             YakitRotamTheme {
@@ -78,7 +89,11 @@ class MainActivity : ComponentActivity() {
                             onUpdateProfile = { viewModel.updateVehicleProfile(it) },
                             onToggleBrand = { viewModel.toggleBrand(it) },
                             onSelectAllBrands = { viewModel.selectAllBrands() },
-                            onCalculateTrip = { viewModel.calculateRoute() },
+                            onCalculateTrip = {
+                                viewModel.calculateRoute()
+                                // Hesap arkada sürerken tam ekran reklam; kapatılınca sonuç hazır olur.
+                                Ads.showInterstitialIfDue(this@MainActivity)
+                            },
                             onDismissError = { viewModel.dismissError() }
                         )
                     }

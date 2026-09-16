@@ -32,6 +32,8 @@ android {
         targetSdk = 36
         versionCode = ciBuildNumber ?: 1
         versionName = ciBuildNumber?.let { "1.0.$it" } ?: "1.0.0"
+        // Mağaza ekran görüntüleri için: ./gradlew installDebug -PnoAds
+        buildConfigField("boolean", "ADS_ENABLED", (!project.hasProperty("noAds")).toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true

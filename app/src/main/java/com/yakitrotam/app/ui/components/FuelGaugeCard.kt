@@ -133,7 +133,10 @@ fun FuelGaugeCard(
                     colors = SliderDefaults.colors(
                         thumbColor = levelColor,
                         activeTrackColor = levelColor,
-                        inactiveTrackColor = DarkSurfaceVariant
+                        inactiveTrackColor = DarkSurfaceVariant,
+                        // %5'lik adımlar kalsın ama 19 nokta izi kalabalık görünüyor.
+                        activeTickColor = Color.Transparent,
+                        inactiveTickColor = Color.Transparent
                     )
                 )
             }

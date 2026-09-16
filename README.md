@@ -139,6 +139,12 @@ tanımlanmalıdır; tanımlı değilse release de test reklamlarıyla çıkar:
 Play Store'a yüklenecek paket (AAB) her build'de Actions artifact'ı olarak
 üretilir; GitHub Release'e yalnızca APK eklenir.
 
+## Play Store
+
+Mağaza görselleri, mağaza metinleri ve adım adım yayın rehberi
+[`store/PLAY_STORE.md`](store/PLAY_STORE.md) içinde. Gizlilik politikası:
+https://ziewenn.github.io/yakitrotam/privacy/
+
 ## Teknik
 
 Kotlin 2.3, Jetpack Compose ve Material 3, hedef SDK 36, tek Activity. Katmanlar ViewModel,

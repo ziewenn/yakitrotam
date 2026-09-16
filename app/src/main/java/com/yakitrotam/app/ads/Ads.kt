@@ -48,6 +48,7 @@ object Ads {
     private const val INTERSTITIAL_MIN_INTERVAL_MS = 3 * 60 * 1000L
 
     fun initialize(activity: Activity) {
+        if (!BuildConfig.ADS_ENABLED) return
         val consentInformation = UserMessagingPlatform.getConsentInformation(activity)
 
         // Önceki oturumda onay alınmışsa formu beklemeden başla.

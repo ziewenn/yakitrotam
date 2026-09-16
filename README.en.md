@@ -140,6 +140,12 @@ release builds also ship with test ads:
 The Play Store bundle (AAB) is produced on every build as an Actions artifact;
 only the APK is attached to GitHub Releases.
 
+## Play Store
+
+Store graphics, listing texts and a step-by-step release guide (in Turkish) are
+in [`store/PLAY_STORE.md`](store/PLAY_STORE.md). Privacy policy:
+https://ziewenn.github.io/yakitrotam/privacy/
+
 ## Technical notes
 
 Kotlin 2.3, Jetpack Compose with Material 3, target SDK 36, single Activity. The layers are

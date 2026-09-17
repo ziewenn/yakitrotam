@@ -17,7 +17,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -35,9 +37,11 @@ data class TripUiState(
     val isLoading: Boolean = false,
     val loadingStep: String = "",
     val isLocationLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isFirstRun: Boolean = false
 )
 
+@OptIn(FlowPreview::class)
 class TripViewModel(
     private val routeRepository: RouteRepository = RouteRepository(),
     private val stationRepository: GasStationRepository = GasStationRepository(),
@@ -59,7 +63,8 @@ class TripViewModel(
             destination = saved.destination
                 ?: popularCities.firstOrNull { it.name.contains("Antalya") } ?: popularCities[1],
             vehicleProfile = saved.vehicleProfile,
-            selectedBrands = saved.selectedBrands
+            selectedBrands = saved.selectedBrands,
+            isFirstRun = preferences?.isFirstRun() == true
         )
     )
     val uiState: StateFlow<TripUiState> = _uiState.asStateFlow()
@@ -73,6 +78,7 @@ class TripViewModel(
                     .map { SavedInputs(it.vehicleProfile, it.selectedBrands, it.origin, it.destination) }
                     .distinctUntilChanged()
                     .drop(1) // açılışta yüklenen değeri geri yazmaya gerek yok
+                    .debounce(400) // yakıt kadranı sürüklenirken her adımda diske yazılmasın
                     .collect { inputs ->
                         saved = saved.copy(
                             vehicleProfile = inputs.vehicleProfile,
@@ -92,6 +98,12 @@ class TripViewModel(
         val origin: CityLocation,
         val destination: CityLocation
     )
+
+    /** Karşılama sayfası kapatıldı; değişiklik yapılmasa da bir daha gösterilmez. */
+    fun completeFirstRun() {
+        _uiState.update { it.copy(isFirstRun = false) }
+        preferences?.save(saved)
+    }
 
     /** Aramadan seçilen yeri "son aranan yerler" listesinin başına ekler. */
     private fun rememberPlace(place: CityLocation) {
@@ -262,14 +274,16 @@ class TripViewModel(
                 _uiState.update { it.copy(loadingStep = "Duraklar hesaplanıyor...") }
 
                 forcedStops = emptyMap()
-                val result = withContext(Dispatchers.Default) {
+                // Motor, adayların gerçek yol sapması için ağ çağrısı yapar; IO iş parçacığında çalışır.
+                val result = withContext(Dispatchers.IO) {
                     optimizerEngine.calculateTripPlan(
                         origin = currentState.origin,
                         destination = currentState.destination,
                         routePoints = routePoints,
                         vehicleProfile = currentState.vehicleProfile,
                         preferredBrands = currentState.selectedBrands,
-                        fuelPrice = priceSnapshot
+                        fuelPrice = priceSnapshot,
+                        detourResolver = detourResolver
                     )
                 }
 
@@ -294,6 +308,8 @@ class TripViewModel(
         }
     }
 
+    private val detourResolver = DetourResolver(routeRepository::roadDetours)
+
     /** Kullanıcının alternatiflerden seçtiği duraklar; yeni rota hesaplanınca sıfırlanır. */
     private var forcedStops: Map<Int, String> = emptyMap()
 
@@ -309,7 +325,7 @@ class TripViewModel(
             .associate { it.stopIndex to it.station.id } + (stopIndex to stationId)
 
         viewModelScope.launch {
-            val updated = withContext(Dispatchers.Default) {
+            val updated = withContext(Dispatchers.IO) {
                 optimizerEngine.calculateTripPlan(
                     origin = trip.origin,
                     destination = trip.destination,
@@ -317,7 +333,8 @@ class TripViewModel(
                     vehicleProfile = trip.vehicleProfile,
                     preferredBrands = trip.preferredBrands,
                     fuelPrice = trip.fuelPrice,
-                    forcedStationIds = forcedStops
+                    forcedStationIds = forcedStops,
+                    detourResolver = detourResolver
                 )
             }
             _uiState.update { it.copy(tripResult = updated) }

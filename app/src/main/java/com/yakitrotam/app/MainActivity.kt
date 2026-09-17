@@ -96,7 +96,8 @@ class MainActivity : ComponentActivity() {
                                 // Hesap arkada sürerken tam ekran reklam; kapatılınca sonuç hazır olur.
                                 Ads.showInterstitialIfDue(this@MainActivity)
                             },
-                            onDismissError = { viewModel.dismissError() }
+                            onDismissError = { viewModel.dismissError() },
+                            onFirstRunDone = { viewModel.completeFirstRun() }
                         )
                     }
                 }

@@ -156,7 +156,7 @@ fun PlaceSearchDialog(
                         unfocusedIndicatorColor = Color.Transparent,
                         cursorColor = PrimaryBlue
                     ),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(14.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
@@ -201,13 +201,12 @@ fun PlaceSearchDialog(
                 ) {
                     Text(
                         when {
-                            searchQuery.isNotBlank() -> "ARAMA SONUÇLARI"
-                            searchResults.any { it.source == PlaceSource.RECENT } -> "SON ARANANLAR"
-                            else -> "ÖNERİLEN KONUMLAR"
+                            searchQuery.isNotBlank() -> "Sonuçlar"
+                            searchResults.any { it.source == PlaceSource.RECENT } -> "Son arananlar"
+                            else -> "Önerilen konumlar"
                         },
                         style = MaterialTheme.typography.labelLarge,
-                        color = TextMuted,
-                        letterSpacing = 0.8.sp
+                        color = TextMuted
                     )
                     if (searchResults.any { it.source == PlaceSource.OPEN_STREET_MAP }) {
                         Text("© OpenStreetMap", color = TextMuted, fontSize = 10.sp)
@@ -319,8 +318,8 @@ private fun QuickActionRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clickable(onClick = onClick),
-        color = PrimaryBlue.copy(alpha = 0.12f),
-        shape = RoundedCornerShape(16.dp)
+        color = DarkSurface,
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),

@@ -9,7 +9,8 @@ Bu klasördeki dosyalar ve Play Console'da doldurulacak alanlar.
 | `screenshot-1.png` ... `screenshot-4.png` | Ana mağaza girişi > Telefon ekran görüntüleri |
 
 Görsellerde reklam yok; ekran görüntüleri `./gradlew installDebug -PnoAds` ile
-alınmış reklamsız build'den üretildi.
+alınmış reklamsız build'den üretildi. Arayüz değişince ham görüntüleri yeniden
+alıp `python store/make_store_assets.py <ham_klasör>` ile hepsi yeniden üretilir.
 
 Önemli adresler:
 
@@ -148,7 +149,7 @@ Kalkış ve varış noktanı seç, deponun hacmini, ortalama tüketimini ve şu 
 Her durak için:
 - İstasyona vardığında depoda kalan yakıt
 - Alman gereken litre ve tahmini tutar
-- Ana yoldan sapma mesafesi
+- Yola eklediği gerçek mesafe ve süre; otoyoldan çıkartıp dolaştıran istasyonlar elenir
 
 Yolculuk özeti:
 - Toplam mesafe ve tahmini süre

@@ -1,7 +1,7 @@
 package com.yakitrotam.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,104 +23,69 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.FuelBrand
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBorder
 import com.yakitrotam.app.ui.theme.DarkSurface
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
+import com.yakitrotam.app.ui.theme.TextSecondary
+import java.util.Locale
 
-/** Uygulamadaki tüm bölümlerin ortak kabı: aynı köşe yarıçapı, kenarlık ve dolgu. */
+val CardShape = RoundedCornerShape(16.dp)
+
+/** Uygulamadaki tüm blokların ortak kabı: kenarlıksız, zeminden bir ton açık yüzey. */
 @Composable
-fun SectionCard(
+fun SurfaceCard(
     modifier: Modifier = Modifier,
-    title: String? = null,
-    icon: ImageVector? = null,
-    trailing: @Composable (() -> Unit)? = null,
-    contentPadding: Int = 18,
+    padding: Dp = 16.dp,
+    spacing: Dp = 12.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(CardShape)
             .background(DarkSurface)
-            .border(1.dp, DarkBorder, RoundedCornerShape(22.dp))
-            .padding(contentPadding.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        if (title != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    if (icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(RoundedCornerShape(9.dp))
-                                .background(AccentLime.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(icon, null, tint = AccentLime, modifier = Modifier.size(17.dp))
-                        }
-                    }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                trailing?.invoke()
-            }
-        }
-        content()
-    }
+            .padding(padding),
+        verticalArrangement = Arrangement.spacedBy(spacing),
+        content = content
+    )
 }
 
-/** Büyük sayı + küçük etiket. Özet ekranındaki metrik ızgarasının yapı taşı. */
+/** Simge + başlık + özet + ok: dokununca ayrıntı sayfası açan ayar satırı. */
 @Composable
-fun StatTile(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    valueColor: Color = TextPrimary,
-    caption: String? = null,
-    alignment: Alignment.Horizontal = Alignment.Start
+fun SettingRow(
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier, horizontalAlignment = alignment) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = TextMuted
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineSmall,
-            color = valueColor,
-            maxLines = 1
-        )
-        if (caption != null) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(22.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
             Text(
-                text = caption,
+                summary,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-                maxLines = 1
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted)
     }
 }
 
-/** Marka renginde, markanın baş harflerini taşıyan kare rozet. */
+/** Marka renginde, markanın baş harflerini taşıyan rozet. */
 @Composable
 fun BrandBadge(
     brand: FuelBrand,
@@ -129,7 +96,7 @@ fun BrandBadge(
     Box(
         modifier = modifier
             .size(size.dp)
-            .clip(RoundedCornerShape((size / 3).dp))
+            .clip(RoundedCornerShape((size / 3.4f).dp))
             .background(brandColor),
         contentAlignment = Alignment.Center
     ) {
@@ -152,3 +119,20 @@ fun FuelBrand.initials(): String = when (this) {
 /** Açık zeminde siyah, koyu zeminde beyaz yazı: marka rozetleri her zaman okunur kalsın. */
 fun Color.readableForeground(): Color =
     if (red * 0.299f + green * 0.587f + blue * 0.114f > 0.6f) Color.Black else Color.White
+
+private val turkish: Locale = Locale.forLanguageTag("tr")
+
+internal fun formatDecimal(value: Double): String =
+    String.format(turkish, if (value % 1.0 == 0.0) "%.0f" else "%.1f", value)
+
+/** 12.480 ₺ */
+internal fun formatMoney(value: Double): String = String.format(turkish, "%,.0f ₺", value)
+
+/** 80,16 ₺ */
+internal fun formatPrice(value: Double): String = String.format(turkish, "%.2f ₺", value)
+
+internal fun formatDuration(totalMinutes: Int): String {
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "$hours sa $minutes dk" else "$minutes dk"
+}

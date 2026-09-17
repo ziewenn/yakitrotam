@@ -2,20 +2,10 @@ package com.yakitrotam.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import com.yakitrotam.app.data.model.StopAlternative
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -27,25 +17,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.FuelStop
-import com.yakitrotam.app.data.model.FuelType
+import com.yakitrotam.app.data.model.StopAlternative
 import com.yakitrotam.app.ui.theme.AccentLime
 import com.yakitrotam.app.ui.theme.DarkBorder
 import com.yakitrotam.app.ui.theme.DarkSurface
@@ -57,288 +48,52 @@ import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
 
-/**
- * Tek bir yakıt durağı. Sol tarafta zaman çizelgesi rayı, sağda istasyon kartı;
- * [isLast] false ise ray aşağıya doğru devam eder.
- */
-@Composable
-fun FuelStopTimelineCard(
-    stop: FuelStop,
-    fuelType: FuelType,
-    onNavigateToStop: (FuelStop) -> Unit,
-    onSelectAlternative: (StopAlternative) -> Unit,
-    modifier: Modifier = Modifier,
-    isLast: Boolean = false
-) {
-    var showAlternatives by remember(stop.station.id) { mutableStateOf(false) }
-    val fuelPercent = stop.arrivalFuelLevelPercent
-    val isCritical = fuelPercent <= 12.0
-    val levelColor = when {
-        isCritical -> ReserveRed
-        fuelPercent <= 25.0 -> FuelAmber
-        else -> SafeGreen
+private val RailWidth = 28.dp
+
+/** "Yol üstü" ya da gerçek ek yol: "+4,2 km · +6 dk". */
+private fun detourLabel(extraKm: Double, minutes: Double?): String =
+    if (extraKm < 1.0) "Yol üstü" else buildString {
+        append("+${formatDecimal(extraKm)} km")
+        if (minutes != null && minutes >= 1.0) append(" · +${minutes.toInt()} dk")
     }
 
+/** Zaman çizelgesinin sol rayı: işaret + aşağı doğru devam eden ince çizgi. */
+@Composable
+fun TimelineRow(
+    marker: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    drawLineAbove: Boolean = true,
+    drawLineBelow: Boolean = true,
+    content: @Composable () -> Unit
+) {
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        // Zaman çizelgesi rayı
         Column(
-            modifier = Modifier.width(34.dp).fillMaxHeight(),
+            modifier = Modifier.width(RailWidth).fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(CircleShape)
-                    .background(AccentLime),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${stop.stopIndex}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.Black
-                )
-            }
-            if (!isLast) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .weight(1f)
-                        .background(DarkBorder)
-                )
-            }
+            Box(Modifier.width(2.dp).height(14.dp).background(if (drawLineAbove) DarkBorder else Color.Transparent))
+            marker()
+            Box(Modifier.width(2.dp).weight(1f).background(if (drawLineBelow) DarkBorder else Color.Transparent))
         }
-
         Spacer(Modifier.width(10.dp))
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(bottom = if (isLast) 0.dp else 12.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(DarkSurface)
-                .border(
-                    width = 1.dp,
-                    color = if (isCritical) ReserveRed.copy(alpha = 0.55f) else DarkBorder,
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(11.dp)
-            ) {
-                BrandBadge(brand = stop.station.brand, size = 40)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stop.station.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = buildString {
-                            append("${stop.distanceFromOriginKm.toInt()}. km")
-                            if (stop.station.city.isNotBlank()) append(" · ${stop.station.city}")
-                            if (stop.station.highway.isNotBlank()) append(" · ${stop.station.highway}")
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Varışta kalan yakıt çubuğu
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "VARIŞTA DEPO",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextMuted
-                    )
-                    Text(
-                        "%${fuelPercent.toInt()} · ${formatDecimal(stop.arrivalFuelLiters)} L",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = levelColor
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(DarkSurfaceVariant)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth((fuelPercent / 100.0).toFloat().coerceIn(0.02f, 1f))
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(levelColor)
-                    )
-                }
-            }
-
-            HorizontalDivider(color = DarkBorder)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatTile(
-                    label = "Bu etap",
-                    value = "${stop.legDistanceKm.toInt()} km",
-                    caption = if (stop.detourDistanceKm < 0.4) {
-                        "yol üstü"
-                    } else {
-                        "${formatDecimal(stop.detourDistanceKm)} km sapma"
-                    }
-                )
-                StatTile(
-                    label = "Dolum",
-                    value = "${formatDecimal(stop.refuelLiters)} L",
-                    valueColor = AccentLime,
-                    caption = fuelType.displayName.substringBefore(" ")
-                )
-                StatTile(
-                    label = "Tutar",
-                    value = formatMoney(stop.estimatedRefuelCostTL),
-                    alignment = Alignment.End,
-                    caption = "tahmini"
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                stop.station.openingHours?.let { hours ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = if (hours.contains("24/7")) "24 saat açık" else hours,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.width(150.dp)
-                        )
-                    }
-                } ?: Spacer(Modifier.width(1.dp))
-
-                OutlinedButton(
-                    onClick = { onNavigateToStop(stop) },
-                    shape = RoundedCornerShape(11.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentLime),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                        brush = SolidColor(AccentLime.copy(alpha = 0.45f))
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(Icons.Default.Directions, null, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text("Yol tarifi", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-
-            if (stop.alternatives.isNotEmpty()) {
-                HorizontalDivider(color = DarkBorder)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { showAlternatives = !showAlternatives }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.SwapHoriz, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Başka istasyon (${stop.alternatives.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSecondary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        if (showAlternatives) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showAlternatives) "Gizle" else "Göster",
-                        tint = TextSecondary
-                    )
-                }
-
-                if (showAlternatives) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        stop.alternatives.forEach { alternative ->
-                            AlternativeRow(
-                                alternative = alternative,
-                                currentKm = stop.distanceFromOriginKm,
-                                onClick = {
-                                    showAlternatives = false
-                                    onSelectAlternative(alternative)
-                                }
-                            )
-                        }
-                        Text(
-                            "Seçince sonraki duraklar yeni istasyona göre yeniden hesaplanır.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextMuted
-                        )
-                    }
-                }
-            }
-        }
+        Box(modifier = Modifier.weight(1f).padding(bottom = if (drawLineBelow) 12.dp else 0.dp)) { content() }
     }
 }
 
-/** Zaman çizelgesinin başı ve sonu: kalkış / varış satırı. */
+/** Kalkış ve varış satırları. */
 @Composable
 fun TimelineEndpoint(
-    label: String,
     title: String,
     caption: String,
     color: Color,
-    modifier: Modifier = Modifier,
-    isStart: Boolean = true
+    isStart: Boolean
 ) {
-    Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        Column(
-            modifier = Modifier.width(34.dp).fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (!isStart) {
-                Box(modifier = Modifier.width(2.dp).height(14.dp).background(DarkBorder))
-            }
-            Box(
-                modifier = Modifier.size(26.dp).clip(CircleShape).background(color.copy(alpha = 0.18f))
-                    .border(2.dp, color, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Navigation, null, tint = color, modifier = Modifier.size(12.dp))
-            }
-            if (isStart) {
-                Box(modifier = Modifier.width(2.dp).weight(1f).background(DarkBorder))
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f).padding(bottom = if (isStart) 12.dp else 0.dp, top = 2.dp)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = TextMuted)
+    TimelineRow(
+        marker = { Box(Modifier.size(12.dp).clip(CircleShape).background(color)) },
+        drawLineAbove = !isStart,
+        drawLineBelow = isStart
+    ) {
+        Column(modifier = Modifier.padding(top = 8.dp)) {
             Text(
                 title,
                 style = MaterialTheme.typography.titleLarge,
@@ -348,6 +103,124 @@ fun TimelineEndpoint(
             )
             Text(caption, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }
+    }
+}
+
+/** Tek bir yakıt durağı: ne zaman, nerede, ne kadar yakıt, kaç para. */
+@Composable
+fun FuelStopTimelineCard(
+    stop: FuelStop,
+    onNavigateToStop: (FuelStop) -> Unit,
+    onSelectAlternative: (StopAlternative) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showAlternatives by remember(stop.station.id) { mutableStateOf(false) }
+    val fuelPercent = stop.arrivalFuelLevelPercent
+    val levelColor = when {
+        fuelPercent <= 12.0 -> ReserveRed
+        fuelPercent <= 25.0 -> FuelAmber
+        else -> SafeGreen
+    }
+    val onRoute = stop.extraRoadKm < 1.0
+
+    TimelineRow(
+        modifier = modifier,
+        marker = {
+            Box(
+                modifier = Modifier.size(24.dp).clip(CircleShape).background(DarkSurfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("${stop.stopIndex}", style = MaterialTheme.typography.labelLarge, color = TextPrimary)
+            }
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().clip(CardShape).background(DarkSurface).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BrandBadge(brand = stop.station.brand, size = 40)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stop.station.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        listOf("${stop.distanceFromOriginKm.toInt()}. km", stop.station.city)
+                            .filter(String::isNotBlank).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Text(
+                    detourLabel(stop.extraRoadKm, stop.detourMinutes),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (onRoute) SafeGreen else FuelAmber,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background((if (onRoute) SafeGreen else FuelAmber).copy(alpha = 0.14f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Fact("Alınacak yakıt", "${formatDecimal(stop.refuelLiters)} L")
+                Fact("Tahmini tutar", formatMoney(stop.estimatedRefuelCostTL))
+                Fact("Varışta depo", "%${fuelPercent.toInt()}", valueColor = levelColor)
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { onNavigateToStop(stop) }) {
+                    Icon(Icons.Default.Directions, null, tint = AccentLime, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Yol tarifi", color = AccentLime, style = MaterialTheme.typography.titleMedium)
+                }
+                Spacer(Modifier.weight(1f))
+                if (stop.alternatives.isNotEmpty()) {
+                    TextButton(onClick = { showAlternatives = !showAlternatives }) {
+                        Text("Başka istasyon", color = TextSecondary, style = MaterialTheme.typography.titleMedium)
+                        Icon(
+                            if (showAlternatives) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (showAlternatives) "Gizle" else "Göster",
+                            tint = TextSecondary
+                        )
+                    }
+                }
+            }
+
+            if (showAlternatives) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stop.alternatives.forEach { alternative ->
+                        AlternativeRow(
+                            alternative = alternative,
+                            currentKm = stop.distanceFromOriginKm,
+                            onClick = {
+                                showAlternatives = false
+                                onSelectAlternative(alternative)
+                            }
+                        )
+                    }
+                    Text(
+                        "Seçince sonraki duraklar yeni istasyona göre yeniden hesaplanır.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Fact(label: String, value: String, valueColor: Color = TextPrimary) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted)
+        Text(value, style = MaterialTheme.typography.titleLarge, color = valueColor)
     }
 }
 
@@ -363,16 +236,11 @@ private fun AlternativeRow(
         kmDifference < 0 -> "${-kmDifference} km önce"
         else -> "aynı noktada"
     }
-    val detour = if (alternative.detourDistanceKm < 0.4) {
-        "yol üstü"
-    } else {
-        "${formatDecimal(alternative.detourDistanceKm)} km sapma"
-    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(DarkSurfaceVariant)
             .clickable(onClick = onClick)
             .padding(10.dp),
@@ -389,7 +257,7 @@ private fun AlternativeRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "${alternative.distanceFromOriginKm.toInt()}. km · $position · $detour",
+                "$position · ${detourLabel(alternative.extraRoadKm, alternative.detourMinutes).lowercase()}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
                 maxLines = 1,

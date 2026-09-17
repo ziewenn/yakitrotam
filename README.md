@@ -17,9 +17,17 @@ OpenStreetMap Overpass API'sinden indirilir; her istasyon rotaya izdüşürüler
 
 Durak seçimi menzil kısıtlı bir açgözlü aramadır: yalnızca mevcut yakıtla
 gerçekten ulaşılabilen istasyonlar aday olur, bunlar arasından mümkün olduğunca
-ileride olan seçilir. Sapma mesafesi, marka tercihi ve OSM'de yakıt türünün
-doğrulanmış olup olmaması puanlamaya girer. Menzil içinde hiç uygun istasyon
-yoksa durak uydurulmaz, kullanıcı uyarılır.
+ileride olan seçilir. Marka tercihi ve OSM'de yakıt türünün doğrulanmış olup
+olmaması puanlamaya girer. Menzil içinde hiç uygun istasyon yoksa durak
+uydurulmaz, kullanıcı uyarılır.
+
+Sapma kuş uçuşu ölçülmez. Otoyolun 200 metre yanındaki bir istasyona girmek
+için çoğu zaman bir sonraki kavşaktan çıkıp 20-30 km dolanmak gerekir. Bu
+yüzden aday istasyonlar OSRM'nin table servisine sorulur ve her biri için
+"rotadan çıkıp istasyona uğrayıp rotaya dönmenin" gerçek yol farkı (km ve
+dakika) hesaplanır. Penceredeki adayların hepsi büyük sapma gerektiriyorsa
+daha erken ama gerçekten yol üstünde olan bir istasyon seçilir. Servis cevap
+vermezse kuş uçuşu tahmine geri dönülür.
 
 Maliyet hesabı canlı pompa fiyatından yapılır. Son durakta depo tam
 doldurulmaz; varışa yetecek miktar, rezerv ve %15 güvenlik payı kadar yakıt
@@ -60,7 +68,7 @@ benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor
   Türkiye Petrolleri, Alpet, Lukoil). Tercih katı bir filtre değil puanlama
   kriteridir; menzil içinde tercih edilen marka yoksa sürücü yolda bırakılmaz.
 - Durak başına: varışta kalan yakıt yüzdesi ve litresi, alınacak litre, tahmini
-  tutar, ana yoldan sapma mesafesi.
+  tutar, yola eklediği gerçek mesafe ve süre (ya da "Yol üstü").
 - Yolculuğun yakıt maliyeti, pompada ödenecek toplam ve 100 km başına maliyet
   dökümü.
 - Rota ve numaralı durakların gerçek harita üzerinde gösterimi.
@@ -127,7 +135,7 @@ kurulamaz; bu klasör güvenli bir harici konuma yedeklenmelidir.
 ## Reklamlar
 
 Uygulama AdMob kullanır: planlama ekranının altında ince bir banner, özet
-ekranında maliyet dökümünün altında uygulamanın kart tasarımına uyan bir native
+ekranında ilk duraktan sonra uygulamanın kart tasarımına uyan bir native
 reklam, rota hesaplanırken de tam ekran geçiş reklamı gösterilir. Reklam
 gelmezse banner ve native kart yer kaplamaz. Geçiş reklamları
 arasında en az 3 dakika bırakılır. AB ve Birleşik Krallık kullanıcılarına reklam

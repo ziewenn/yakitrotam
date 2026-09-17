@@ -124,14 +124,13 @@ fun MapPickerDialog(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkSurface)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column {
-                    Text("SEÇİLEN NOKTA", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                    Text("Seçilen nokta", style = MaterialTheme.typography.labelMedium, color = TextMuted)
                     Text(
                         text = center?.let {
                             String.format(Locale.US, "%.5f, %.5f", it.latitude, it.longitude)

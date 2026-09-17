@@ -34,17 +34,38 @@ data class FuelStop(
     val arrivalFuelLiters: Double,        // Kalan yakıt Litre
     val refuelLiters: Double,             // Depoyu tam doldurmak için gereken litre
     val estimatedRefuelCostTL: Double,    // Yaklaşık dolum maliyeti (TL)
-    val detourDistanceKm: Double,         // Ana güzergahtan tek yön sapma mesafesi (km)
+    /** Durağın rotaya eklediği toplam yolun yarısı (gidiş payı); toplam ek yol bunun iki katıdır. */
+    val detourDistanceKm: Double,
     /** Aynı bölgede, mevcut yakıtla ulaşılabilen ve bu durağın yerine seçilebilecek istasyonlar. */
-    val alternatives: List<StopAlternative> = emptyList()
-)
+    val alternatives: List<StopAlternative> = emptyList(),
+    /** Gerçek yol ağından hesaplanan ek süre; yol verisi alınamadıysa null. */
+    val detourMinutes: Double? = null
+) {
+    val extraRoadKm: Double
+        get() = detourDistanceKm * 2
+}
 
 @Serializable
 data class StopAlternative(
     val station: GasStation,
     val distanceFromOriginKm: Double,
-    val detourDistanceKm: Double
+    val detourDistanceKm: Double,
+    val detourMinutes: Double? = null
+) {
+    val extraRoadKm: Double
+        get() = detourDistanceKm * 2
+}
+
+/** Bir istasyona uğramanın, doğrudan devam etmeye göre gerçek yol ağındaki ek maliyeti. */
+data class RoadDetour(
+    val extraKm: Double,
+    val extraMinutes: Double
 )
+
+/** Aday istasyonların gerçek yol sapmasını çözer; ulaşılamazsa null döner (bkz. RouteRepository.roadDetours). */
+fun interface DetourResolver {
+    fun resolve(from: LatLng, to: LatLng, stations: List<LatLng>): List<RoadDetour?>?
+}
 
 @Serializable
 data class TripPlanResult(

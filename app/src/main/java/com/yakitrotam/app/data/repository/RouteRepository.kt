@@ -2,12 +2,14 @@ package com.yakitrotam.app.data.repository
 
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.LatLng
+import com.yakitrotam.app.data.model.RoadDetour
 import com.yakitrotam.app.util.GeoUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class RouteRepository {
@@ -76,6 +78,57 @@ class RouteRepository {
         }
 
         return@withContext generateCorridorFallback(start, end)
+    }
+
+    private val detourCache = object : LinkedHashMap<String, List<RoadDetour?>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<RoadDetour?>>?) = size > 24
+    }
+
+    /**
+     * Her istasyon için "[from] → istasyon → [to]" ile doğrudan "[from] → [to]" arasındaki
+     * gerçek yol farkını OSRM tablo servisinden tek istekte alır.
+     *
+     * Kuş uçuşu mesafe burada yanıltıcıdır: otoyola 100 m uzaklıktaki bir istasyon, otoyoldan
+     * çıkıp geri dönmeyi gerektirdiği için 15-30 km ek yol anlamına gelebilir.
+     *
+     * Engelleyici çağrıdır; arka plan iş parçacığından çağrılmalıdır. Servise ulaşılamazsa
+     * null döner ve çağıran taraf kuş uçuşu tahmine geri düşer.
+     */
+    fun roadDetours(from: LatLng, to: LatLng, stations: List<LatLng>): List<RoadDetour?>? {
+        if (stations.isEmpty()) return emptyList()
+        val coordinates = (listOf(from, to) + stations).joinToString(";") {
+            String.format(Locale.US, "%.6f,%.6f", it.longitude, it.latitude)
+        }
+        synchronized(detourCache) { detourCache[coordinates] }?.let { return it }
+
+        return try {
+            val url = "https://router.project-osrm.org/table/v1/driving/$coordinates?annotations=duration,distance"
+            httpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val json = JSONObject(response.body?.string().orEmpty())
+                if (json.optString("code") != "Ok") return null
+                val distances = json.getJSONArray("distances")
+                val durations = json.getJSONArray("durations")
+                fun cell(matrix: org.json.JSONArray, row: Int, column: Int): Double? =
+                    matrix.getJSONArray(row).let { if (it.isNull(column)) null else it.getDouble(column) }
+
+                val directMeters = cell(distances, 0, 1) ?: return null
+                val directSeconds = cell(durations, 0, 1) ?: return null
+                val result = stations.indices.map { index ->
+                    val k = index + 2
+                    val meters = (cell(distances, 0, k) ?: return@map null) + (cell(distances, k, 1) ?: return@map null)
+                    val seconds = (cell(durations, 0, k) ?: return@map null) + (cell(durations, k, 1) ?: return@map null)
+                    RoadDetour(
+                        extraKm = ((meters - directMeters) / 1000.0).coerceAtLeast(0.0),
+                        extraMinutes = ((seconds - directSeconds) / 60.0).coerceAtLeast(0.0)
+                    )
+                }
+                synchronized(detourCache) { detourCache[coordinates] = result }
+                result
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**

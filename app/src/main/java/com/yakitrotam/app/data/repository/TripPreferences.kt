@@ -50,6 +50,9 @@ class TripPreferences(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences("trip_preferences", Context.MODE_PRIVATE)
 
+    /** Hiç kayıt yoksa uygulama ilk kez açılıyordur; araç bilgileri bir kez sorulur. */
+    fun isFirstRun(): Boolean = !prefs.contains(KEY_STATE)
+
     fun load(): SavedTripState = SavedTripState.decode(prefs.getString(KEY_STATE, null))
 
     fun save(state: SavedTripState) {

@@ -18,9 +18,17 @@ deviates from it.
 
 Stop selection is a range-constrained greedy search. Only stations that are
 genuinely reachable on the fuel currently in the tank become candidates, and the
-furthest reachable one wins. Detour distance, brand preference and whether OSM
-actually confirms the fuel type feed into the score. If nothing suitable is in
-range the app does not invent a stop, it warns you instead.
+furthest reachable one wins. Brand preference and whether OSM actually confirms
+the fuel type feed into the score. If nothing suitable is in range the app does
+not invent a stop, it warns you instead.
+
+Detours are not measured as the crow flies. A station 200 metres from a
+motorway often means leaving at the next junction and driving 20-30 km to get
+back. Candidates are therefore sent to the OSRM table service, which gives the
+real extra distance and time of leaving the route, visiting the station and
+rejoining. If every candidate in the window needs a long detour, an earlier
+station that is actually on the road is picked instead. If the service does not
+answer, the straight-line estimate is used as a fallback.
 
 Costs are computed from live pump prices. The final stop does not fill the tank
 to the brim; it takes only what is needed to reach the destination, plus the
@@ -60,7 +68,7 @@ ratio of the petrol price and is labelled as an estimate in the UI.
   Türkiye Petrolleri, Alpet, Lukoil). Preference is a scoring criterion rather
   than a hard filter, so you are never stranded because your brand was absent.
 - Per stop: fuel remaining on arrival in percent and litres, litres to add,
-  estimated cost, detour from the main road.
+  estimated cost, real extra distance and time (or "on the way").
 - Cost breakdown: fuel burned for the trip, total paid at the pump, cost per
   100 km.
 - Route and numbered stops drawn on a real map.
@@ -128,7 +136,7 @@ somewhere safe.
 ## Ads
 
 The app uses AdMob: a thin banner at the bottom of the planner screen, a native
-ad styled like the app's cards below the cost breakdown on the summary screen,
+ad styled like the app's cards after the first stop on the summary screen,
 and a full-screen interstitial while a route is being calculated. If no ad is
 returned, the banner and the native card take no space.
 Interstitials are at least 3 minutes apart. Users in the EEA and UK see Google's

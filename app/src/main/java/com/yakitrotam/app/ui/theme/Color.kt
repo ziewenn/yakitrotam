@@ -3,15 +3,15 @@ package com.yakitrotam.app.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // --- Yüzeyler -------------------------------------------------------------
-// Gece sürüşünde göz yormayan, mavi-gri değil sıcak-nötr koyu bir zemin.
-val DarkBackground = Color(0xFF0A0B0F)
-val DarkSurface = Color(0xFF14161D)
-val DarkSurfaceVariant = Color(0xFF1C1F28)
-val DarkBorder = Color(0xFF2A2E3A)
-val ElevatedSurface = Color(0xFF232733)
+// Kartlar kenarlıkla değil, zeminden bir ton açık yüzeyle ayrışır.
+val DarkBackground = Color(0xFF0F1115)
+val DarkSurface = Color(0xFF191C22)
+val DarkSurfaceVariant = Color(0xFF242830)
+val DarkBorder = Color(0xFF2E333D) // yalnızca ince ayırıcı çizgiler için
+val ElevatedSurface = Color(0xFF2A2F38)
 
-// --- Vurgu renkleri -------------------------------------------------------
-// Ana vurgu enerji/elektrik yeşili; ikincil vurgu sıcak turuncu (pompa/alev).
+// --- Vurgu ----------------------------------------------------------------
+// Tek vurgu rengi; yalnızca ana eylem, seçili durum ve rota çizgisinde kullanılır.
 val AccentLime = Color(0xFF9EFF3D)
 val AccentLimeDim = Color(0xFF6FBF1F)
 val AccentLimeSoft = Color(0xFFD6FFAA)
@@ -21,16 +21,12 @@ val PrimaryBlue = AccentLime
 val PrimaryBlueVariant = AccentLimeDim
 val PrimaryBlueSoft = AccentLimeSoft
 
+// --- Durum renkleri (yakıt seviyesi) ---------------------------------------
 val FuelAmber = Color(0xFFFFB020)
-val ReserveRed = Color(0xFFFF4D4D)
-val SafeGreen = Color(0xFF34E39B)
+val ReserveRed = Color(0xFFFF5A5A)
+val SafeGreen = Color(0xFF3DDC97)
 
-// --- Tipografi renkleri ---------------------------------------------------
-val TextPrimary = Color(0xFFF4F6FA)
-val TextSecondary = Color(0xFF9AA3B2)
-val TextMuted = Color(0xFF636B7A)
-
-// --- Hero degrade durakları ----------------------------------------------
-val HeroGradientStart = Color(0xFF1A2416)
-val HeroGradientMid = Color(0xFF161A22)
-val HeroGradientEnd = Color(0xFF0D0F14)
+// --- Metin ------------------------------------------------------------------
+val TextPrimary = Color(0xFFF2F4F8)
+val TextSecondary = Color(0xFFA3ABBA)
+val TextMuted = Color(0xFF727A89)

@@ -1,7 +1,8 @@
 package com.yakitrotam.app.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,53 +17,46 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.ads.NativeAdCard
-import com.yakitrotam.app.data.model.FuelStop
 import com.yakitrotam.app.data.model.TripPlanResult
+import com.yakitrotam.app.ui.components.CardShape
 import com.yakitrotam.app.ui.components.FuelStopTimelineCard
 import com.yakitrotam.app.ui.components.RouteMiniMap
-import com.yakitrotam.app.ui.components.SectionCard
-import com.yakitrotam.app.ui.components.StatTile
+import com.yakitrotam.app.ui.components.SurfaceCard
 import com.yakitrotam.app.ui.components.TimelineEndpoint
+import com.yakitrotam.app.ui.components.TimelineRow
 import com.yakitrotam.app.ui.components.formatDecimal
+import com.yakitrotam.app.ui.components.formatDuration
 import com.yakitrotam.app.ui.components.formatMoney
 import com.yakitrotam.app.ui.components.formatPrice
 import com.yakitrotam.app.ui.theme.AccentLime
 import com.yakitrotam.app.ui.theme.DarkBackground
 import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
 import com.yakitrotam.app.ui.theme.FuelAmber
-import com.yakitrotam.app.ui.theme.HeroGradientEnd
-import com.yakitrotam.app.ui.theme.HeroGradientMid
-import com.yakitrotam.app.ui.theme.HeroGradientStart
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
 import com.yakitrotam.app.ui.theme.TextMuted
@@ -71,6 +65,10 @@ import com.yakitrotam.app.ui.theme.TextSecondary
 import com.yakitrotam.app.util.GoogleMapsLauncher
 import com.yakitrotam.app.util.TripShareText
 
+/**
+ * Plan sonucu. Sıra, sürücünün sorduğu sırayı izler: nereden geçiyorum (harita), ne kadar
+ * sürer ve tutar (özet), nerede duruyorum (duraklar), ayrıntı isteyene maliyet dökümü.
+ */
 @Composable
 fun RouteSummaryScreen(
     tripResult: TripPlanResult,
@@ -79,169 +77,95 @@ fun RouteSummaryScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val hours = tripResult.estimatedDrivingTimeMinutes / 60
-    val minutes = tripResult.estimatedDrivingTimeMinutes % 60
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = DarkBackground,
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkBackground)
+                    .statusBarsPadding()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackToPlanner) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextPrimary)
+                }
+                Text(
+                    text = "${tripResult.origin.name.substringBefore(" (")} → " +
+                        tripResult.destination.name.substringBefore(" ("),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { shareTripPlan(context, tripResult) }) {
+                    Icon(Icons.Default.Share, "Planı paylaş", tint = TextPrimary)
+                }
+            }
+        },
         bottomBar = {
-            Surface(color = DarkSurface, tonalElevation = 6.dp) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, DarkBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                        .padding(16.dp)
-                        .navigationBarsPadding(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkBackground)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Button(
+                    onClick = { GoogleMapsLauncher.launchFullRouteInGoogleMaps(context, tripResult) },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = { shareTripPlan(context, tripResult) },
-                            modifier = Modifier.height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentLime),
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = true)
-                                .copy(brush = SolidColor(AccentLime.copy(alpha = 0.5f)))
-                        ) {
-                            Icon(Icons.Default.Share, null, modifier = Modifier.size(19.dp))
-                            Spacer(Modifier.width(7.dp))
-                            Text("Paylaş", style = MaterialTheme.typography.titleMedium)
-                        }
-                        Button(
-                            onClick = { GoogleMapsLauncher.launchFullRouteInGoogleMaps(context, tripResult) },
-                            modifier = Modifier.weight(1f).height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentLime,
-                                contentColor = Color.Black
-                            )
-                        ) {
-                            Icon(Icons.Default.Navigation, null, modifier = Modifier.size(21.dp))
-                            Spacer(Modifier.width(9.dp))
-                            Text("Haritalarda başlat", style = MaterialTheme.typography.titleLarge)
-                        }
-                    }
+                    Icon(Icons.Default.Navigation, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (tripResult.hasStops) {
-                            "${tripResult.stopsCount} yakıt durağı güzergaha ara nokta olarak eklenir."
-                        } else {
-                            "Durak gerekmediği için rota doğrudan açılır."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        if (tripResult.hasStops) "Duraklarla Haritalar'da aç" else "Haritalar'da aç",
+                        style = MaterialTheme.typography.titleLarge
                     )
                 }
             }
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(bottom = 20.dp)
+            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp)
         ) {
-            item {
-                Row(
-                    modifier = Modifier.statusBarsPadding().padding(top = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    IconButton(
-                        onClick = onBackToPlanner,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextPrimary)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("SEYAHAT PLANI", style = MaterialTheme.typography.labelMedium, color = TextMuted)
-                        Text(
-                            text = "${tripResult.origin.name.substringBefore(" (")} → " +
-                                tripResult.destination.name.substringBefore(" ("),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            item { TripHeroCard(tripResult, hours, minutes) }
-
-            tripResult.warning?.let { warning ->
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(FuelAmber.copy(alpha = 0.12f))
-                            .border(1.dp, FuelAmber.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Default.Warning, null, tint = FuelAmber, modifier = Modifier.size(20.dp))
-                        Text(warning, color = TextPrimary, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-
             item { RouteMiniMap(tripResult = tripResult) }
 
-            item { CostBreakdownCard(tripResult) }
+            item { TripOverviewCard(tripResult, Modifier.padding(top = 12.dp)) }
 
-            // Reklam, sonuç görüldükten sonra ve durak listesinden önce; rota girişini engellemez.
-            item { NativeAdCard() }
+            tripResult.warning?.let { warning ->
+                item { Notice(warning, FuelAmber, Modifier.padding(top = 12.dp)) }
+            }
 
             item {
                 Text(
-                    text = if (tripResult.hasStops) "Yakıt durakları" else "Durak gerekmiyor",
+                    if (tripResult.hasStops) "Yakıt durakları" else "Yakıt durağı gerekmiyor",
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp)
                 )
             }
 
             if (!tripResult.hasStops) {
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(SafeGreen.copy(alpha = 0.1f))
-                            .border(1.dp, SafeGreen.copy(alpha = 0.4f), RoundedCornerShape(18.dp))
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(Icons.Default.CheckCircle, null, tint = SafeGreen, modifier = Modifier.size(30.dp))
-                        Column {
-                            Text(
-                                "Yakıtınız yeterli",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = TextPrimary
-                            )
-                            Text(
-                                "Rezerve düşmeden varış noktasına ulaşabilirsiniz. " +
-                                    "Varışta yaklaşık ${formatDecimal(tripResult.arrivalFuelLiters)} L kalır.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
-                            )
-                        }
-                    }
+                    Notice(
+                        "Rezerve düşmeden varış noktasına ulaşırsın. Varışta depoda yaklaşık " +
+                            "${formatDecimal(tripResult.arrivalFuelLiters)} L kalır.",
+                        SafeGreen,
+                        icon = Icons.Default.CheckCircle
+                    )
                 }
+                // Reklam sayfanın üst yarısında kalır; durak olmasa da gösterim kaybolmaz.
+                item { NativeAdCard(Modifier.padding(top = 12.dp)) }
             } else {
                 item {
                     TimelineEndpoint(
-                        label = "Kalkış",
                         title = tripResult.origin.name,
                         caption = "Depoda ${formatDecimal(tripResult.vehicleProfile.currentFuelLiters)} L " +
                             "(%${tripResult.vehicleProfile.currentLevelPercent.toInt()})",
@@ -249,21 +173,19 @@ fun RouteSummaryScreen(
                         isStart = true
                     )
                 }
-                items(tripResult.stops) { stop ->
+                itemsIndexed(tripResult.stops, key = { _, stop -> stop.station.id }) { index, stop ->
                     FuelStopTimelineCard(
                         stop = stop,
-                        fuelType = tripResult.vehicleProfile.fuelType,
-                        onNavigateToStop = { selectedStop: FuelStop ->
-                            GoogleMapsLauncher.launchTurnByTurnToStation(context, selectedStop)
-                        },
-                        onSelectAlternative = { alternative ->
-                            onSelectAlternative(stop.stopIndex, alternative.station.id)
-                        }
+                        onNavigateToStop = { GoogleMapsLauncher.launchTurnByTurnToStation(context, it) },
+                        onSelectAlternative = { onSelectAlternative(stop.stopIndex, it.station.id) }
                     )
+                    // Liste içi native reklam: ilk duraktan sonra, zaman çizelgesi rayı kesilmeden.
+                    if (index == 0) {
+                        NativeAdCard { ad -> TimelineRow(marker = {}) { ad() } }
+                    }
                 }
                 item {
                     TimelineEndpoint(
-                        label = "Varış",
                         title = tripResult.destination.name,
                         caption = "Depoda ~${formatDecimal(tripResult.arrivalFuelLiters)} L " +
                             "(%${tripResult.arrivalFuelPercent.toInt()}) kalır",
@@ -273,70 +195,50 @@ fun RouteSummaryScreen(
                 }
             }
 
-            item { DataSourceFooter(tripResult) }
+            item { CostBreakdownCard(tripResult, Modifier.padding(top = 24.dp)) }
+
+            item {
+                Text(
+                    "İstasyonlar: OpenStreetMap katkıcıları · Fiyatlar: ${tripResult.fuelPrice.sourceName}, " +
+                        "${tripResult.fuelPrice.priceDate} · Rota: OSRM. Tüm değerler tahmindir.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 16.dp, start = 4.dp, end = 4.dp)
+                )
+            }
         }
     }
 }
 
+/** Üç temel sayı ve cebinden çıkacak para; tek bakışta okunur. */
 @Composable
-private fun TripHeroCard(tripResult: TripPlanResult, hours: Int, minutes: Int) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(HeroGradientStart, HeroGradientMid, HeroGradientEnd)))
-            .border(1.dp, DarkBorder, RoundedCornerShape(24.dp))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            StatTile(
-                label = "Mesafe",
-                value = "${tripResult.totalDistanceKm.toInt()} km",
-                caption = if (tripResult.totalDrivenDistanceKm - tripResult.totalDistanceKm > 0.5) {
-                    "+${formatDecimal(tripResult.totalDrivenDistanceKm - tripResult.totalDistanceKm)} km sapma"
-                } else {
-                    "sapmasız"
-                }
-            )
-            StatTile(
-                label = "Süre",
-                value = if (hours > 0) "${hours}s ${minutes}dk" else "${minutes}dk",
-                caption = "molalar dahil"
-            )
-            StatTile(
-                label = "Durak",
-                value = "${tripResult.stopsCount}",
-                valueColor = if (tripResult.hasStops) FuelAmber else SafeGreen,
-                caption = if (tripResult.hasStops) "yakıt molası" else "gerekmiyor",
-                alignment = Alignment.End
-            )
+private fun TripOverviewCard(tripResult: TripPlanResult, modifier: Modifier = Modifier) {
+    SurfaceCard(modifier = modifier, spacing = 14.dp) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Metric("Mesafe", "${tripResult.totalDistanceKm.toInt()} km")
+            Metric("Süre", formatDuration(tripResult.estimatedDrivingTimeMinutes))
+            Metric("Durak", if (tripResult.hasStops) "${tripResult.stopsCount}" else "Yok")
         }
-
         HorizontalDivider(color = DarkBorder)
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
             Column {
-                Text("POMPADA ÖDENECEK", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                Text("Duraklarda ödeyeceğin", style = MaterialTheme.typography.labelMedium, color = TextMuted)
                 Text(
-                    formatMoney(tripResult.totalRefuelCostTL),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = AccentLime
+                    "~${formatMoney(tripResult.totalRefuelCostTL)}",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = TextPrimary
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("YAKILAN YAKIT", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                Text("Yakacağın yakıt", style = MaterialTheme.typography.labelMedium, color = TextMuted)
                 Text(
                     "${formatDecimal(tripResult.totalFuelConsumedLiters)} L",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = TextPrimary
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextSecondary
                 )
             }
         }
@@ -344,38 +246,42 @@ private fun TripHeroCard(tripResult: TripPlanResult, hours: Int, minutes: Int) {
 }
 
 @Composable
-private fun CostBreakdownCard(tripResult: TripPlanResult) {
+private fun Metric(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted)
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+    }
+}
+
+@Composable
+private fun CostBreakdownCard(tripResult: TripPlanResult, modifier: Modifier = Modifier) {
     val fuelType = tripResult.vehicleProfile.fuelType
     val price = tripResult.fuelPrice
 
-    SectionCard(title = "Maliyet dökümü") {
+    SurfaceCard(modifier = modifier) {
+        Text("Maliyet ayrıntısı", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
         CostRow(
             "Yolculuğun yakıt maliyeti",
-            formatMoney(tripResult.totalEstimatedCostTL),
-            "${formatDecimal(tripResult.totalFuelConsumedLiters)} L × ${formatPrice(price.priceFor(fuelType))}"
+            "${formatDecimal(tripResult.totalFuelConsumedLiters)} L × ${formatPrice(price.priceFor(fuelType))}",
+            formatMoney(tripResult.totalEstimatedCostTL)
         )
         CostRow(
             "Duraklarda alınacak yakıt",
-            formatMoney(tripResult.totalRefuelCostTL),
             "${formatDecimal(tripResult.stops.sumOf { it.refuelLiters })} L, son durakta yetecek kadar",
-            valueColor = AccentLime
+            formatMoney(tripResult.totalRefuelCostTL)
         )
         CostRow(
             "100 km başına",
+            "${formatDecimal(tripResult.vehicleProfile.consumptionPer100Km)} L/100 km tüketimle",
             formatMoney(
                 if (tripResult.totalDrivenDistanceKm > 0) {
                     tripResult.totalEstimatedCostTL / tripResult.totalDrivenDistanceKm * 100.0
-                } else {
-                    0.0
-                }
-            ),
-            "${formatDecimal(tripResult.vehicleProfile.consumptionPer100Km)} L/100km tüketimle"
+                } else 0.0
+            )
         )
-
         if (price.isEstimated(fuelType)) {
             Text(
-                text = "${fuelType.displayName} fiyatı canlı yayınlanmadığı için tahminidir; " +
-                    "gerçek pompa fiyatı farklılık gösterebilir.",
+                "${fuelType.displayName} fiyatı canlı yayınlanmadığı için tahminidir; gerçek pompa fiyatı farklı olabilir.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = FuelAmber
             )
@@ -384,57 +290,39 @@ private fun CostBreakdownCard(tripResult: TripPlanResult) {
 }
 
 @Composable
-private fun CostRow(label: String, value: String, caption: String, valueColor: Color = TextPrimary) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
-    ) {
+private fun CostRow(label: String, caption: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         }
-        Text(value, style = MaterialTheme.typography.titleLarge, color = valueColor)
+        Text(value, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
     }
 }
 
 @Composable
-private fun DataSourceFooter(tripResult: TripPlanResult) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkSurface)
-            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+private fun Notice(
+    message: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.ErrorOutline
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().clip(CardShape).background(color.copy(alpha = 0.12f)).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("VERİ KAYNAKLARI", style = MaterialTheme.typography.labelMedium, color = TextMuted)
-        Text(
-            "İstasyonlar: OpenStreetMap katkıcıları (ODbL)",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
-        Text(
-            "Fiyatlar: ${tripResult.fuelPrice.sourceName} · ${tripResult.fuelPrice.regionName} · " +
-                tripResult.fuelPrice.priceDate,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
-        Text(
-            "Rota: OSRM sürüş rotası. Tüm değerler tahmindir; sürüş tarzı ve trafik sonucu değiştirir.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted
-        )
+        Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+        Text(message, color = TextPrimary, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
 /** Planı düz metin olarak sistemin paylaşım menüsüne verir (WhatsApp, SMS, e-posta...). */
-private fun shareTripPlan(context: android.content.Context, trip: TripPlanResult) {
-    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+private fun shareTripPlan(context: Context, trip: TripPlanResult) {
+    val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_SUBJECT, "YakıtRotam yakıt planı")
-        putExtra(android.content.Intent.EXTRA_TEXT, TripShareText.build(trip))
+        putExtra(Intent.EXTRA_SUBJECT, "YakıtRotam yakıt planı")
+        putExtra(Intent.EXTRA_TEXT, TripShareText.build(trip))
     }
-    context.startActivity(android.content.Intent.createChooser(send, "Yakıt planını paylaş"))
+    context.startActivity(Intent.createChooser(send, "Yakıt planını paylaş"))
 }

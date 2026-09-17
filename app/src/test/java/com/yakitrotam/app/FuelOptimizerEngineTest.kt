@@ -231,4 +231,71 @@ class FuelOptimizerEngineTest {
         assertEquals(total / 2.0, projection.alongKm, total * 0.02)
         assertEquals(5.0, projection.detourKm, 0.6)
     }
+    /** İstasyon kimliğine göre sabit ek yol döndüren sahte yol ağı. */
+    private fun fakeRoads(extraKmByStationId: Map<String, Double>, stations: List<GasStation>) =
+        DetourResolver { _, _, points ->
+            points.map { point ->
+                val station = stations.first { it.location == point }
+                extraKmByStationId[station.id]?.let { RoadDetour(extraKm = it, extraMinutes = it * 1.2) }
+            }
+        }
+
+    private val lowFuelCar = VehicleProfile(
+        consumptionPer100Km = 7.0,
+        tankCapacityLiters = 50.0,
+        currentLevelPercent = 25.0,
+        reserveThresholdPercent = 15.0
+    )
+
+    @Test
+    fun `yola yakin gorunen ama otoyoldan cikis gerektiren istasyon secilmez`() {
+        // İkisi de Gebze civarında. "yakin" rotaya kuş uçuşu neredeyse sıfır mesafede ama
+        // gerçekte 18 km ek yol istiyor; "tesis" biraz daha uzakta görünüyor ama yol üstünde.
+        val stations = listOf(
+            station("yakin_ama_cikis", FuelBrand.SHELL, 40.8002, 29.4302),
+            station("yol_ustu_tesis", FuelBrand.OPET, 40.8040, 29.4330)
+        )
+        val roads = fakeRoads(mapOf("yakin_ama_cikis" to 18.0, "yol_ustu_tesis" to 0.2), stations)
+
+        val plan = engineWith(stations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar, detourResolver = roads
+        )
+
+        val first = plan.stops.first()
+        assertEquals("yol_ustu_tesis", first.station.id)
+        assertEquals(0.2, first.extraRoadKm, 0.001)
+        assertNotNull(first.detourMinutes)
+    }
+
+    @Test
+    fun `penceredeki tum adaylar buyuk sapma gerektiriyorsa daha erken yol ustu istasyon secilir`() {
+        // Menzil ~71 km. Uçtaki istasyon (İzmit öncesi) 20 km sapma istiyor;
+        // yolun ortasındaki Gebze tesisi ise yol üstünde.
+        val stations = listOf(
+            station("gebze_tesis", FuelBrand.OPET, 40.801, 29.431),
+            station("uzak_cikis", FuelBrand.SHELL, 40.781, 29.80)
+        )
+        val roads = fakeRoads(mapOf("gebze_tesis" to 0.1, "uzak_cikis" to 20.0), stations)
+
+        val plan = engineWith(stations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar, detourResolver = roads
+        )
+
+        assertEquals("gebze_tesis", plan.stops.first().station.id)
+    }
+
+    @Test
+    fun `yol servisi cevap vermezse kus ucusu tahmine geri dusulur`() {
+        val offline = DetourResolver { _, _, _ -> null }
+
+        val withResolver = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar, detourResolver = offline
+        )
+        val without = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar
+        )
+
+        assertEquals(without.stops.map { it.station.id }, withResolver.stops.map { it.station.id })
+        assertNull(withResolver.stops.first().detourMinutes)
+    }
 }

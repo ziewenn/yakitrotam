@@ -3,8 +3,8 @@ package com.yakitrotam.app.ui.screens
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,20 +25,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,8 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.ads.AdBanner
@@ -56,19 +59,19 @@ import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.PlaceSuggestion
 import com.yakitrotam.app.data.model.VehicleProfile
-import com.yakitrotam.app.ui.components.BrandFilterBar
-import com.yakitrotam.app.ui.components.FuelGaugeCard
+import com.yakitrotam.app.ui.components.BrandSheet
+import com.yakitrotam.app.ui.components.FuelLevelCard
 import com.yakitrotam.app.ui.components.FuelPriceStrip
 import com.yakitrotam.app.ui.components.PlaceSearchDialog
-import com.yakitrotam.app.ui.components.SectionCard
+import com.yakitrotam.app.ui.components.SettingRow
+import com.yakitrotam.app.ui.components.SurfaceCard
+import com.yakitrotam.app.ui.components.VehicleSheet
+import com.yakitrotam.app.ui.components.formatDecimal
+import com.yakitrotam.app.ui.components.shortName
 import com.yakitrotam.app.ui.theme.AccentLime
 import com.yakitrotam.app.ui.theme.DarkBackground
 import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
 import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
-import com.yakitrotam.app.ui.theme.HeroGradientEnd
-import com.yakitrotam.app.ui.theme.HeroGradientMid
-import com.yakitrotam.app.ui.theme.HeroGradientStart
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
 import com.yakitrotam.app.ui.theme.TextMuted
@@ -76,6 +79,12 @@ import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
 import com.yakitrotam.app.ui.viewmodel.TripUiState
 
+private val LocationRowHeight = 64.dp
+
+/**
+ * Tek ekranlık planlayıcı. Her yolculukta değişen iki şey öndedir: güzergah ve depodaki
+ * yakıt. Nadiren değişen araç bilgileri ve marka tercihi alttan açılan sayfalardadır.
+ */
 @Composable
 fun TripPlannerScreen(
     uiState: TripUiState,
@@ -92,10 +101,16 @@ fun TripPlannerScreen(
     onSelectAllBrands: () -> Unit,
     onCalculateTrip: () -> Unit,
     onDismissError: () -> Unit,
+    onFirstRunDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showOriginSearch by remember { mutableStateOf(false) }
     var showDestinationSearch by remember { mutableStateOf(false) }
+    var showVehicleSheet by remember { mutableStateOf(false) }
+    var showBrandSheet by remember { mutableStateOf(false) }
+
+    // İlk açılışta araç bilgileri bir kez sorulur; sonrasında kayıtlı değerler kullanılır.
+    LaunchedEffect(uiState.isFirstRun) { if (uiState.isFirstRun) showVehicleSheet = true }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -103,6 +118,11 @@ fun TripPlannerScreen(
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (granted) onUseCurrentLocation() else onLocationPermissionDenied()
+    }
+    val requestLocation = {
+        locationPermissionLauncher.launch(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        )
     }
 
     Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
@@ -112,90 +132,79 @@ fun TripPlannerScreen(
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            PlannerHero()
-
-            FuelPriceStrip(
-                snapshot = uiState.livePrice,
-                selectedFuelType = uiState.vehicleProfile.fuelType
+            Text(
+                "YakıtRotam",
+                style = MaterialTheme.typography.headlineMedium,
+                color = TextPrimary,
+                modifier = Modifier.padding(top = 12.dp, start = 4.dp, bottom = 4.dp)
             )
 
-            RouteSelectionCard(
-                uiState = uiState,
+            RouteCard(
+                origin = uiState.origin.name,
+                destination = uiState.destination.name,
+                isLocationLoading = uiState.isLocationLoading,
                 onOriginClick = { showOriginSearch = true },
                 onDestinationClick = { showDestinationSearch = true },
                 onSwapLocations = onSwapLocations,
-                onRequestLocation = {
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                }
+                onRequestLocation = requestLocation
             )
 
-            FuelGaugeCard(
+            FuelLevelCard(
                 vehicleProfile = uiState.vehicleProfile,
-                onUpdateProfile = onUpdateProfile
+                onLevelChange = { onUpdateProfile(uiState.vehicleProfile.copy(currentLevelPercent = it)) }
             )
 
-            BrandFilterBar(
-                selectedBrands = uiState.selectedBrands,
-                onToggleBrand = onToggleBrand,
-                onSelectAll = onSelectAllBrands
+            SurfaceCard(padding = 0.dp, spacing = 0.dp) {
+                SettingRow(
+                    icon = Icons.Default.DirectionsCar,
+                    title = "Aracım",
+                    summary = with(uiState.vehicleProfile) {
+                        "${fuelType.shortName()} · ${formatDecimal(consumptionPer100Km)} L/100 km · " +
+                            "${formatDecimal(tankCapacityLiters)} L depo"
+                    },
+                    onClick = { showVehicleSheet = true }
+                )
+                HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(start = 52.dp))
+                SettingRow(
+                    icon = Icons.Default.LocalGasStation,
+                    title = "Marka tercihi",
+                    summary = if (uiState.selectedBrands.isEmpty()) {
+                        "Tüm markalar"
+                    } else {
+                        uiState.selectedBrands.joinToString(", ") { it.displayName }
+                    },
+                    onClick = { showBrandSheet = true }
+                )
+            }
+
+            FuelPriceStrip(
+                snapshot = uiState.livePrice,
+                selectedFuelType = uiState.vehicleProfile.fuelType,
+                modifier = Modifier.padding(top = 4.dp)
             )
 
-            // Sabit alt panel (buton + banner reklam) içeriğin son kartını örtmesin.
+            // Sabit alt panel (buton + banner reklam) son içeriği örtmesin.
             Spacer(Modifier.height(if (uiState.errorMessage != null) 250.dp else 170.dp))
         }
 
-        // Ana eylem her zaman parmağın altında kalsın diye ekrana sabit.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, DarkBackground, DarkBackground)
-                    )
-                )
+                .background(Brush.verticalGradient(listOf(Color.Transparent, DarkBackground, DarkBackground)))
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Hata mesajı butonun hemen üstünde durur; sayfanın sonunda kalınca
-            // kullanıcı göremiyor ve "hiçbir şey olmadı" sanıyordu.
-            uiState.errorMessage?.let { message ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF2A1416))
-                        .border(1.dp, ReserveRed.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Default.Warning, null, tint = ReserveRed, modifier = Modifier.size(20.dp))
-                    Text(
-                        message,
-                        color = TextPrimary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismissError, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, "Kapat", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
+            uiState.errorMessage?.let { ErrorBanner(it, onDismissError) }
 
             Button(
                 onClick = onCalculateTrip,
                 enabled = !uiState.isLoading,
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentLime,
                     contentColor = Color.Black,
@@ -204,22 +213,16 @@ fun TripPlannerScreen(
                 )
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        color = AccentLime,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
+                    CircularProgressIndicator(Modifier.size(18.dp), color = AccentLime, strokeWidth = 2.dp)
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        text = uiState.loadingStep.ifBlank { "Hesaplanıyor..." },
-                        style = MaterialTheme.typography.titleLarge,
+                        uiState.loadingStep.ifBlank { "Hesaplanıyor..." },
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 } else {
-                    Icon(Icons.Default.Route, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(9.dp))
-                    Text("Yakıt planımı oluştur", style = MaterialTheme.typography.titleLarge)
+                    Text("Durakları planla", style = MaterialTheme.typography.titleLarge)
                 }
             }
 
@@ -229,17 +232,10 @@ fun TripPlannerScreen(
 
     if (showOriginSearch) {
         PlaceSearchDialog(
-            title = "Kalkış noktası",
+            title = "Nereden",
             isOriginSearch = true,
             onSelectPlace = onSelectOrigin,
-            onUseCurrentLocation = {
-                locationPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    )
-                )
-            },
+            onUseCurrentLocation = requestLocation,
             onSearchQueryChanged = onSearchPlaces,
             onResolvePlace = onResolvePlace,
             mapInitialCenter = uiState.origin.latLng,
@@ -250,7 +246,7 @@ fun TripPlannerScreen(
 
     if (showDestinationSearch) {
         PlaceSearchDialog(
-            title = "Varış noktası",
+            title = "Nereye",
             isOriginSearch = false,
             onSelectPlace = onSelectDestination,
             onSearchQueryChanged = onSearchPlaces,
@@ -260,118 +256,86 @@ fun TripPlannerScreen(
             onDismiss = { showDestinationSearch = false }
         )
     }
-}
 
-@Composable
-private fun PlannerHero() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.linearGradient(listOf(HeroGradientStart, HeroGradientMid, HeroGradientEnd))
-            )
-            .border(1.dp, DarkBorder, RoundedCornerShape(26.dp))
-            .padding(20.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(AccentLime),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.LocalGasStation,
-                        null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        "YakıtRotam",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = TextPrimary
-                    )
-                    Text(
-                        "Gerçek istasyonlar, güncel fiyatlar",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary
-                    )
-                }
+    if (showVehicleSheet) {
+        VehicleSheet(
+            vehicleProfile = uiState.vehicleProfile,
+            isFirstRun = uiState.isFirstRun,
+            onUpdateProfile = onUpdateProfile,
+            onDismiss = {
+                showVehicleSheet = false
+                if (uiState.isFirstRun) onFirstRunDone()
             }
-            Text(
-                "Rotanı gir, deponu söyle; nerede ve ne kadar yakıt alman gerektiğini hesaplayalım.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted
-            )
-        }
+        )
+    }
+
+    if (showBrandSheet) {
+        BrandSheet(
+            selectedBrands = uiState.selectedBrands,
+            onToggleBrand = onToggleBrand,
+            onSelectAll = onSelectAllBrands,
+            onDismiss = { showBrandSheet = false }
+        )
     }
 }
 
+/** Harita uygulamalarındaki yol tarifi girişine benzeyen iki satır: nereden, nereye. */
 @Composable
-private fun RouteSelectionCard(
-    uiState: TripUiState,
+private fun RouteCard(
+    origin: String,
+    destination: String,
+    isLocationLoading: Boolean,
     onOriginClick: () -> Unit,
     onDestinationClick: () -> Unit,
     onSwapLocations: () -> Unit,
     onRequestLocation: () -> Unit
 ) {
-    SectionCard(
-        title = "Güzergah",
-        icon = Icons.Default.Route,
-        trailing = {
-            TextButton(onClick = onRequestLocation, enabled = !uiState.isLocationLoading) {
-                if (uiState.isLocationLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(13.dp),
-                        color = AccentLime,
-                        strokeWidth = 1.5.dp
-                    )
-                } else {
-                    Icon(Icons.Default.MyLocation, null, tint = AccentLime, modifier = Modifier.size(15.dp))
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (uiState.isLocationLoading) "ALINIYOR" else "KONUMUM",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = AccentLime
+    SurfaceCard(padding = 0.dp, spacing = 0.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Sol ray: kalkış noktası, kesikli çizgi, varış noktası.
+            Canvas(modifier = Modifier.padding(start = 16.dp).size(width = 12.dp, height = LocationRowHeight * 2)) {
+                val x = size.width / 2f
+                val top = size.height * 0.25f
+                val bottom = size.height * 0.75f
+                drawLine(
+                    color = TextMuted,
+                    start = Offset(x, top + 10.dp.toPx()),
+                    end = Offset(x, bottom - 10.dp.toPx()),
+                    strokeWidth = 2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 5.dp.toPx()))
                 )
+                drawCircle(SafeGreen, radius = 5.dp.toPx(), center = Offset(x, top))
+                drawCircle(ReserveRed, radius = 5.dp.toPx(), center = Offset(x, bottom))
             }
-        }
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+            Column(modifier = Modifier.weight(1f)) {
                 LocationRow(
                     label = "Nereden",
-                    value = uiState.origin.name,
-                    dotColor = SafeGreen,
-                    onClick = onOriginClick
+                    value = origin,
+                    onClick = onOriginClick,
+                    trailing = {
+                        IconButton(onClick = onRequestLocation, enabled = !isLocationLoading) {
+                            if (isLocationLoading) {
+                                CircularProgressIndicator(Modifier.size(18.dp), color = AccentLime, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.MyLocation, "Konumumu kullan", tint = AccentLime)
+                            }
+                        }
+                    }
                 )
-                LocationRow(
-                    label = "Nereye",
-                    value = uiState.destination.name,
-                    dotColor = ReserveRed,
-                    onClick = onDestinationClick
-                )
+                HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(start = 14.dp))
+                LocationRow(label = "Nereye", value = destination, onClick = onDestinationClick)
             }
+
             IconButton(
                 onClick = onSwapLocations,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 4.dp)
-                    .size(36.dp)
+                    .padding(horizontal = 10.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(DarkSurface)
-                    .border(1.dp, DarkBorder, CircleShape)
+                    .background(DarkSurfaceVariant)
             ) {
-                Icon(Icons.Default.SwapVert, "Yön değiştir", tint = AccentLime, modifier = Modifier.size(19.dp))
+                Icon(Icons.Default.SwapVert, "Kalkış ve varışı değiştir", tint = TextPrimary)
             }
         }
     }
@@ -381,31 +345,52 @@ private fun RouteSelectionCard(
 private fun LocationRow(
     label: String,
     value: String,
-    dotColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailing: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(15.dp))
-            .background(DarkSurfaceVariant)
+            .height(LocationRowHeight)
             .clickable(onClick = onClick)
-            .padding(start = 14.dp, end = 10.dp, top = 13.dp, bottom = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(start = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(dotColor))
         Column(modifier = Modifier.weight(1f)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted)
             Text(
-                text = value,
+                value,
                 style = MaterialTheme.typography.titleLarge,
                 color = TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        // Sağdaki takas butonuna yer aç
-        Spacer(Modifier.width(34.dp))
+        trailing?.invoke()
+    }
+}
+
+/** Hata mesajı ana butonun hemen üstünde durur; sayfanın sonunda kalınca fark edilmiyordu. */
+@Composable
+private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF3A1A1D))
+            .padding(start = 14.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(Icons.Default.ErrorOutline, null, tint = ReserveRed, modifier = Modifier.size(20.dp))
+        Text(
+            message,
+            color = TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, "Kapat", tint = TextSecondary, modifier = Modifier.size(18.dp))
+        }
     }
 }

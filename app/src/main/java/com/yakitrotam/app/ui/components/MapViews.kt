@@ -193,9 +193,9 @@ private fun drawTrip(map: MapLibreMap, style: Style, trip: TripPlanResult, densi
         val bounds = LatLngBounds.Builder()
             .includes(allPoints.map { MapLatLng(it.latitude, it.longitude) })
             .build()
-        // Üstte lejant, altta kaynak yazısı var; işaretler onların altında kalmasın.
+        // Altta kaynak yazısı var; işaretler onun altında kalmasın.
         fun dp(value: Int) = (value * density).toInt()
-        map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(28), dp(56), dp(28), dp(36)))
+        map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(32), dp(32), dp(32), dp(40)))
     }
 }
 

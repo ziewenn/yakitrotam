@@ -40,7 +40,11 @@ import com.yakitrotam.app.BuildConfig
  * MediaView en az 120 dp tutulur; daha küçüğü AdMob tarafından geçersiz sayılabiliyor.
  */
 @Composable
-fun NativeAdCard(modifier: Modifier = Modifier) {
+fun NativeAdCard(
+    modifier: Modifier = Modifier,
+    /** Reklam yüklendiğinde kartı saran kap; reklam yoksa kap da çizilmez, boşluk kalmaz. */
+    container: @Composable (content: @Composable () -> Unit) -> Unit = { it() }
+) {
     if (!Ads.isReady || BuildConfig.ADMOB_NATIVE_ID.isBlank()) return
     val context = LocalContext.current
     var nativeAd by remember { mutableStateOf<NativeAd?>(null) }
@@ -77,11 +81,13 @@ fun NativeAdCard(modifier: Modifier = Modifier) {
     }
 
     val ad = nativeAd ?: return
-    AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { ctx -> NativeAdViews(ctx).root },
-        update = { view -> NativeAdViews.bind(view, ad) }
-    )
+    container {
+        AndroidView(
+            modifier = modifier.fillMaxWidth(),
+            factory = { ctx -> NativeAdViews(ctx).root },
+            update = { view -> NativeAdViews.bind(view, ad) }
+        )
+    }
 }
 
 /** Native reklam görünümünü Android View'larıyla kurar; Compose teması renkleriyle aynı. */
@@ -97,7 +103,7 @@ private class NativeAdViews(context: Context) {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(14))
             background = GradientDrawable().apply {
-                cornerRadius = dp(20).toFloat()
+                cornerRadius = dp(16).toFloat()
                 setColor(SURFACE)
                 setStroke(dp(1), AMBER_BORDER)
             }
@@ -177,7 +183,7 @@ private class NativeAdViews(context: Context) {
 
     companion object {
 
-        private val SURFACE = Color.parseColor("#14161D")
+        private val SURFACE = Color.parseColor("#191C22")
         private val AMBER = Color.parseColor("#FFB020")
         private val AMBER_BORDER = Color.parseColor("#66FFB020")
         private val LIME = Color.parseColor("#9EFF3D")

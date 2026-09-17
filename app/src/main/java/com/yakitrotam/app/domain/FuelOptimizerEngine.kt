@@ -7,19 +7,30 @@ import com.yakitrotam.app.util.GeoUtils
 /**
  * Rota üzerindeki yakıt tüketimini simüle eder ve duraklara karar verir.
  *
- * Temel kural: bir istasyon ancak **mevcut yakıtla gerçekten ulaşılabiliyorsa** durak olabilir.
- * (Eski sürüm ulaşılamayan istasyonları da seçip kalan yakıtı 0.5 L'ye kırpıyordu,
- * bu da depoya sığmayan mesafeler için gerçekçi olmayan planlar üretiyordu.)
+ * İki temel kural:
+ * 1. Bir istasyon ancak **mevcut yakıtla gerçekten ulaşılabiliyorsa** durak olabilir.
+ * 2. "Yola yakın" olmak yetmez: adayların gerçek yol ağındaki ek mesafesi [DetourResolver]
+ *    ile ölçülür. Otoyola kuş uçuşu 100 m uzaktaki bir istasyon, otoyoldan çıkıp geri
+ *    dönmeyi gerektirdiği için 15-30 km ek yol demek olabilir; böyle adaylar elenir.
+ *    Çözücü yoksa veya servise ulaşılamıyorsa kuş uçuşu sapma tahminine geri düşülür.
  */
 class FuelOptimizerEngine(
     private val stationRepository: GasStationRepository
 ) {
 
-    /** İstasyonun rotaya izdüşürülmüş hali. */
+    /** İstasyonun rotaya izdüşürülmüş hali. [detourKm] kuş uçuşu, tek yön. */
     private data class Candidate(
         val station: GasStation,
         val alongKm: Double,
         val detourKm: Double
+    )
+
+    /** Ek yolu (gerçek ya da tahmini) belirlenmiş ve puanlanmış aday. Düşük puan daha iyi. */
+    private data class Scored(
+        val candidate: Candidate,
+        val extraKm: Double,
+        val extraMinutes: Double?,
+        val score: Double
     )
 
     fun calculateTripPlan(
@@ -30,7 +41,9 @@ class FuelOptimizerEngine(
         preferredBrands: Set<FuelBrand> = emptySet(),
         fuelPrice: FuelPriceSnapshot = FuelPriceSnapshot.fallback(),
         /** Kullanıcının alternatiflerden seçtiği istasyonlar: durak sırası -> istasyon kimliği. */
-        forcedStationIds: Map<Int, String> = emptyMap()
+        forcedStationIds: Map<Int, String> = emptyMap(),
+        /** Ağ çağrısı yapabilir; bu yüzden fonksiyon arka plan iş parçacığında çağrılmalıdır. */
+        detourResolver: DetourResolver? = null
     ): TripPlanResult {
         val cumulative = GeoUtils.cumulativeDistancesKm(routePoints)
         val totalDistanceKm = cumulative.lastOrNull() ?: 0.0
@@ -83,53 +96,84 @@ class FuelOptimizerEngine(
                 break
             }
 
+            val fromKm = alongKm
             val farthestAlongKm = reachable.maxOf { it.alongKm }
-            val rank = { candidate: Candidate ->
-                score(candidate, farthestAlongKm, preferredBrands, vehicleProfile.fuelType)
-            }
             // Pencere menzille orantılı: kısa menzilde 45 km'lik tolerans aracı erken durdururdu.
-            val windowKm = minOf(SELECTION_WINDOW_KM, (farthestAlongKm - alongKm) * 0.25)
-            val forcedId = forcedStationIds[stops.size + 1]
-            val chosen = reachable.firstOrNull { it.station.id == forcedId }
-                ?: reachable.filter { it.alongKm >= farthestAlongKm - windowKm }.minBy(rank)
+            val windowKm = minOf(SELECTION_WINDOW_KM, (farthestAlongKm - fromKm) * 0.25)
+            val forced = reachable.firstOrNull { it.station.id == forcedStationIds[stops.size + 1] }
+
+            fun evaluate(pool: List<Candidate>, resolver: DetourResolver? = detourResolver): List<Scored> =
+                scoreCandidates(
+                    pool = pool,
+                    fromKm = fromKm,
+                    farthestAlongKm = farthestAlongKm,
+                    usableLiters = usableLiters,
+                    consumptionRate = consumptionRate,
+                    routePoints = routePoints,
+                    totalDistanceKm = totalDistanceKm,
+                    preferredBrands = preferredBrands,
+                    fuelType = vehicleProfile.fuelType,
+                    detourResolver = resolver
+                )
+
+            val windowPool = reachable.filter { it.alongKm >= farthestAlongKm - windowKm }
+            var evaluated = evaluate(shortlist(windowPool, forced))
+
+            // Penceredeki en iyi aday bile yoldan ciddi sapma gerektiriyorsa (ör. otoyoldan
+            // çıkış), menzilin ikinci yarısındaki daha erken istasyonlara da bakılır:
+            // yol üstünde 30 km önce durmak, 15 km'lik sapmadan iyidir.
+            val bestInWindow = evaluated.minByOrNull { it.score }
+            if (detourResolver != null && (bestInWindow == null || bestInWindow.extraKm > WIDEN_IF_EXTRA_KM)) {
+                val widerPool = reachable.filter {
+                    it.alongKm < farthestAlongKm - windowKm &&
+                        it.alongKm >= fromKm + (farthestAlongKm - fromKm) * 0.5
+                }
+                if (widerPool.isNotEmpty()) evaluated = evaluated + evaluate(shortlist(widerPool, null))
+            }
+
+            // Gerçek ek yol hesaba katılınca hiçbir aday menzile girmiyorsa kuş uçuşu tahmine dön;
+            // rezerv payı olduğu için sürücüyü duraksız bırakmaktan iyidir.
+            if (evaluated.isEmpty()) evaluated = evaluate(shortlist(windowPool, forced), resolver = null)
+            val chosen = evaluated.firstOrNull { it.candidate.station.id == forced?.station?.id }
+                ?: evaluated.minBy { it.score }
 
             // Aynı bölgedeki diğer seçenekler. OSM'de aynı istasyon hem nokta hem alan olarak
             // kayıtlı olabildiği için seçilen durağa 300 m'den yakın olanlar tekrar sayılmaz.
-            val alternatives = reachable
+            val alternatives = evaluated
                 .filter {
-                    it.station.id != chosen.station.id &&
-                        it.alongKm >= chosen.alongKm - ALTERNATIVE_RANGE_KM &&
-                        GeoUtils.distanceKm(it.station.location, chosen.station.location) > 0.3
+                    it.candidate.station.id != chosen.candidate.station.id &&
+                        GeoUtils.distanceKm(it.candidate.station.location, chosen.candidate.station.location) > 0.3
                 }
-                .sortedBy(rank)
+                .sortedBy { it.score }
                 .take(MAX_ALTERNATIVES)
-                .map { StopAlternative(it.station, it.alongKm, it.detourKm) }
+                .map { StopAlternative(it.candidate.station, it.candidate.alongKm, it.extraKm / 2, it.extraMinutes) }
 
-            val legKm = chosen.alongKm - alongKm
-            // Sapma yakıtı: istasyona gidiş rotadan ayrılmayı gerektirir.
-            val burnedLiters = (legKm + chosen.detourKm).toLiters(consumptionRate)
+            val legKm = chosen.candidate.alongKm - alongKm
+            val oneWayDetourKm = chosen.extraKm / 2
+            val burnedLiters = (legKm + oneWayDetourKm).toLiters(consumptionRate)
             val arrivalFuel = (fuelLiters - burnedLiters).coerceAtLeast(0.0)
             val refuelLiters = tankCapacity - arrivalFuel
 
             stops.add(
                 FuelStop(
                     stopIndex = stops.size + 1,
-                    station = chosen.station,
-                    distanceFromOriginKm = chosen.alongKm,
+                    station = chosen.candidate.station,
+                    distanceFromOriginKm = chosen.candidate.alongKm,
                     legDistanceKm = legKm,
                     arrivalFuelLevelPercent = (arrivalFuel / tankCapacity) * 100.0,
                     arrivalFuelLiters = arrivalFuel,
                     refuelLiters = refuelLiters,
                     estimatedRefuelCostTL = refuelLiters * pricePerLiter,
-                    detourDistanceKm = chosen.detourKm,
-                    alternatives = alternatives
+                    detourDistanceKm = oneWayDetourKm,
+                    alternatives = alternatives,
+                    detourMinutes = chosen.extraMinutes
                 )
             )
 
-            detourDistanceKm += chosen.detourKm * 2 // gidiş + rotaya dönüş
-            alongKm = chosen.alongKm
+            detourDistanceKm += chosen.extraKm
+            alongKm = chosen.candidate.alongKm
             // Depo dolu çıkılır, rotaya dönüş yakıtı hemen düşülür.
-            fuelLiters = tankCapacity - chosen.detourKm.toLiters(consumptionRate)
+            fuelLiters = tankCapacity - oneWayDetourKm.toLiters(consumptionRate)
         }
 
         // Son durakta depoyu tam doldurmak, varışa 30 km kala dolum yapan sürücüye
@@ -162,7 +206,7 @@ class FuelOptimizerEngine(
             destination = destination,
             totalDistanceKm = totalDistanceKm,
             totalDrivenDistanceKm = drivenKm,
-            estimatedDrivingTimeMinutes = estimateMinutes(drivenKm, stops.size),
+            estimatedDrivingTimeMinutes = estimateMinutes(totalDistanceKm, stops),
             stops = stops,
             totalFuelConsumedLiters = totalFuelConsumed,
             totalEstimatedCostTL = totalFuelConsumed * pricePerLiter,
@@ -177,30 +221,73 @@ class FuelOptimizerEngine(
     }
 
     /**
-     * Düşük puan daha iyi. Hedef mümkün olduğunca ileri gitmek (az durak), ama bunu
-     * az sapma ve tercih edilen marka için birkaç km feda edebilmek.
+     * Yol sorgusuna gidecek adayları sınırlar: rotaya kuş uçuşu en yakın olanlar gerçekten
+     * yol üstünde olmaya en yatkın olanlardır. Kullanıcının seçtiği istasyon her zaman dahildir.
      */
-    private fun score(
-        candidate: Candidate,
-        farthestAlongKm: Double,
-        preferredBrands: Set<FuelBrand>,
-        fuelType: FuelType
-    ): Double {
-        val brandPenalty = when {
-            preferredBrands.isEmpty() -> 0.0
-            candidate.station.brand in preferredBrands -> 0.0
-            else -> NON_PREFERRED_BRAND_PENALTY
-        }
-        val unknownFuelPenalty = if (candidate.station.confirmsFuel(fuelType)) 0.0 else 2.0
-        val unnamedPenalty = if (candidate.station.brand == FuelBrand.DIGER) 3.0 else 0.0
-        return candidate.detourKm * 3.0 +
-            (farthestAlongKm - candidate.alongKm) * 0.2 +
-            brandPenalty + unknownFuelPenalty + unnamedPenalty
+    private fun shortlist(pool: List<Candidate>, forced: Candidate?): List<Candidate> {
+        val closest = pool.sortedBy { it.detourKm }.take(SHORTLIST_SIZE)
+        return if (forced == null || forced in closest) closest else closest + forced
     }
 
-    /** Otoyol ağırlıklı ortalama 92 km/s + durak başına 12 dk mola. */
-    private fun estimateMinutes(distanceKm: Double, stopCount: Int): Int =
-        ((distanceKm / 92.0) * 60).toInt() + stopCount * 12
+    /**
+     * Adayların ek yolunu belirler (çözücü varsa gerçek yol ağından, yoksa kuş uçuşu
+     * sapmanın iki katı olarak), bu ek yolla hâlâ ulaşılabilir olanları puanlar.
+     */
+    private fun scoreCandidates(
+        pool: List<Candidate>,
+        fromKm: Double,
+        farthestAlongKm: Double,
+        usableLiters: Double,
+        consumptionRate: Double,
+        routePoints: List<LatLng>,
+        totalDistanceKm: Double,
+        preferredBrands: Set<FuelBrand>,
+        fuelType: FuelType,
+        detourResolver: DetourResolver?
+    ): List<Scored> {
+        if (pool.isEmpty()) return emptyList()
+
+        val roadDetours = detourResolver?.let { resolver ->
+            // Tüm adayları kapsayan iki rota noktası: sapma bu ikisi arasındaki farktan ölçülür.
+            val startKm = (pool.minOf { it.alongKm } - DETOUR_ANCHOR_MARGIN_KM).coerceAtLeast(fromKm)
+            val endKm = (pool.maxOf { it.alongKm } + DETOUR_ANCHOR_MARGIN_KM).coerceAtMost(totalDistanceKm)
+            resolver.resolve(
+                from = GeoUtils.findPointAtDistance(routePoints, startKm),
+                to = GeoUtils.findPointAtDistance(routePoints, endKm),
+                stations = pool.map { it.station.location }
+            )
+        }
+
+        return pool.mapIndexedNotNull { index, candidate ->
+            val road = roadDetours?.getOrNull(index)
+            // Yol verisi geldiyse ama bu istasyon için yoksa, yol ağından ulaşılamıyor demektir.
+            if (roadDetours != null && road == null) return@mapIndexedNotNull null
+
+            val extraKm = road?.extraKm ?: (candidate.detourKm * 2)
+            val reachLiters = (candidate.alongKm - fromKm + extraKm / 2).toLiters(consumptionRate)
+            if (reachLiters > usableLiters) return@mapIndexedNotNull null
+
+            val brandPenalty = when {
+                preferredBrands.isEmpty() -> 0.0
+                candidate.station.brand in preferredBrands -> 0.0
+                else -> NON_PREFERRED_BRAND_PENALTY
+            }
+            val unknownFuelPenalty = if (candidate.station.confirmsFuel(fuelType)) 0.0 else 2.0
+            val unnamedPenalty = if (candidate.station.brand == FuelBrand.DIGER) 3.0 else 0.0
+            val score = extraKm * 1.5 +
+                (road?.extraMinutes ?: 0.0) * 0.5 +
+                (farthestAlongKm - candidate.alongKm) * 0.2 +
+                brandPenalty + unknownFuelPenalty + unnamedPenalty
+
+            Scored(candidate, extraKm, road?.extraMinutes, score)
+        }
+    }
+
+    /** Otoyol ağırlıklı ortalama 92 km/s + durak başına 12 dk mola + duraklara sapma süresi. */
+    private fun estimateMinutes(routeKm: Double, stops: List<FuelStop>): Int {
+        val detourMinutes = stops.sumOf { it.detourMinutes ?: (it.extraRoadKm / 50.0 * 60.0) }
+        return ((routeKm / 92.0) * 60 + stops.size * 12 + detourMinutes).toInt()
+    }
 
     private fun Double.toLiters(consumptionPer100Km: Double): Double =
         (this / 100.0) * consumptionPer100Km
@@ -216,14 +303,21 @@ class FuelOptimizerEngine(
         /** Son durağa en fazla bu kadar km kala alternatif istasyonlar da değerlendirilir. */
         const val SELECTION_WINDOW_KM = 45.0
 
-        /** Alternatif istasyonlar seçilen durağın en fazla bu kadar km gerisinden aranır. */
-        const val ALTERNATIVE_RANGE_KM = 40.0
+        /** Tek yol sorgusunda değerlendirilen en fazla aday (OSRM tablo isteği küçük kalsın). */
+        const val SHORTLIST_SIZE = 24
+
+        /** En iyi adayın gerçek ek yolu bunu aşıyorsa daha erken istasyonlara da bakılır. */
+        const val WIDEN_IF_EXTRA_KM = 3.0
+
+        /** Sapma ölçümünde adayların önüne ve arkasına bırakılan rota payı. */
+        const val DETOUR_ANCHOR_MARGIN_KM = 2.0
+
         const val MAX_ALTERNATIVES = 3
 
         /** Son dolumda varış ihtiyacının üzerine bırakılan güvenlik payı. */
         const val FINAL_FILL_BUFFER = 1.15
 
-        /** ~15 km sapmaya bedel: tercih dışı markaya ancak gerçekten alternatif yoksa gidilir. */
+        /** ~30 km ek yola bedel: tercih dışı markaya ancak gerçekten alternatif yoksa gidilir. */
         const val NON_PREFERRED_BRAND_PENALTY = 45.0
     }
 }

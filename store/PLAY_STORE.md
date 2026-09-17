@@ -27,6 +27,7 @@ alınmış reklamsız build'den üretildi.
 3. Uygulama oluşunca **Reklam birimleri > Reklam birimi ekle**:
    - **Banner** türünde bir birim (ad: `alt-banner`).
    - **Geçiş reklamı (Interstitial)** türünde bir birim (ad: `rota-hesaplama`).
+   - **Native advanced** türünde bir birim (ad: `ozet-native`).
 4. Şu üç değeri not et:
    - Uygulama kimliği: `ca-app-pub-...~...` (tilda işaretli olan)
    - Banner birim kimliği: `ca-app-pub-.../...`
@@ -47,6 +48,7 @@ New repository secret**:
 | `ADMOB_APP_ID` | Uygulama kimliği (`~` işaretli) |
 | `ADMOB_BANNER_ID` | Banner birim kimliği |
 | `ADMOB_INTERSTITIAL_ID` | Geçiş reklamı birim kimliği |
+| `ADMOB_NATIVE_ID` | Native advanced birim kimliği |
 
 `app-ads.txt` için yayıncı kimliğini `ziewenn/ziewenn.github.io` reposundaki
 dosyada `#` işaretini kaldırıp `pub-XXXXXXXXXXXXXXXX` yerine yazman yeterli.

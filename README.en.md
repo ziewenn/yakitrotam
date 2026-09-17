@@ -127,8 +127,10 @@ somewhere safe.
 
 ## Ads
 
-The app uses AdMob: a thin banner at the bottom of the planner and summary
-screens, and a full-screen interstitial while a route is being calculated.
+The app uses AdMob: a thin banner at the bottom of the planner screen, a native
+ad styled like the app's cards below the cost breakdown on the summary screen,
+and a full-screen interstitial while a route is being calculated. If no ad is
+returned, the banner and the native card take no space.
 Interstitials are at least 3 minutes apart. Users in the EEA and UK see Google's
 consent form (UMP) before any ad is requested.
 
@@ -141,6 +143,10 @@ release builds also ship with test ads:
 | `ADMOB_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` |
 | `ADMOB_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
 | `ADMOB_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+| `ADMOB_NATIVE_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+
+Without `ADMOB_NATIVE_ID`, release builds do not show the native ad card at all
+(no test ads).
 
 The Play Store bundle (AAB) is produced on every build as an Actions artifact;
 only the APK is attached to GitHub Releases.

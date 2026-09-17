@@ -126,8 +126,10 @@ kurulamaz; bu klasör güvenli bir harici konuma yedeklenmelidir.
 
 ## Reklamlar
 
-Uygulama AdMob kullanır: planlama ve özet ekranlarının altında ince bir banner,
-rota hesaplanırken de tam ekran geçiş reklamı gösterilir. Geçiş reklamları
+Uygulama AdMob kullanır: planlama ekranının altında ince bir banner, özet
+ekranında maliyet dökümünün altında uygulamanın kart tasarımına uyan bir native
+reklam, rota hesaplanırken de tam ekran geçiş reklamı gösterilir. Reklam
+gelmezse banner ve native kart yer kaplamaz. Geçiş reklamları
 arasında en az 3 dakika bırakılır. AB ve Birleşik Krallık kullanıcılarına reklam
 yüklenmeden önce Google'ın onay formu (UMP) gösterilir.
 
@@ -140,6 +142,10 @@ tanımlanmalıdır; tanımlı değilse release de test reklamlarıyla çıkar:
 | `ADMOB_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` |
 | `ADMOB_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
 | `ADMOB_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+| `ADMOB_NATIVE_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` |
+
+`ADMOB_NATIVE_ID` tanımlı değilse release build'de native reklam kartı hiç
+gösterilmez (test reklamı çıkmaz).
 
 Play Store'a yüklenecek paket (AAB) her build'de Actions artifact'ı olarak
 üretilir; GitHub Release'e yalnızca APK eklenir.

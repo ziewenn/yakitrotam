@@ -21,6 +21,7 @@ fun admobValue(name: String): String? =
 val admobTestAppId = "ca-app-pub-3940256099942544~3347511713"
 val admobTestBannerId = "ca-app-pub-3940256099942544/9214589741"
 val admobTestInterstitialId = "ca-app-pub-3940256099942544/1033173712"
+val admobTestNativeId = "ca-app-pub-3940256099942544/2247696110"
 
 android {
     namespace = "com.yakitrotam.app"
@@ -61,6 +62,7 @@ android {
             manifestPlaceholders["admobAppId"] = admobTestAppId
             buildConfigField("String", "ADMOB_BANNER_ID", "\"$admobTestBannerId\"")
             buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"$admobTestInterstitialId\"")
+            buildConfigField("String", "ADMOB_NATIVE_ID", "\"$admobTestNativeId\"")
         }
         release {
             manifestPlaceholders["admobAppId"] = admobValue("ADMOB_APP_ID") ?: admobTestAppId
@@ -71,6 +73,12 @@ android {
             buildConfigField(
                 "String", "ADMOB_INTERSTITIAL_ID",
                 "\"${admobValue("ADMOB_INTERSTITIAL_ID") ?: admobTestInterstitialId}\""
+            )
+            buildConfigField(
+                "String", "ADMOB_NATIVE_ID",
+                // Kimlik tanımlı değilse boş kalır ve native kart hiç gösterilmez;
+                // yayındaki uygulamada test reklamı çıkmasın.
+                "\"${admobValue("ADMOB_NATIVE_ID").orEmpty()}\""
             )
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false

@@ -44,7 +44,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.yakitrotam.app.ads.AdBanner
+import com.yakitrotam.app.ads.NativeAdCard
 import com.yakitrotam.app.data.model.FuelStop
 import com.yakitrotam.app.data.model.TripPlanResult
 import com.yakitrotam.app.ui.components.FuelStopTimelineCard
@@ -132,7 +132,6 @@ fun RouteSummaryScreen(
                         color = TextMuted,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
-                    AdBanner()
                 }
             }
         }
@@ -198,6 +197,9 @@ fun RouteSummaryScreen(
             item { RouteMiniMap(tripResult = tripResult) }
 
             item { CostBreakdownCard(tripResult) }
+
+            // Reklam, sonuç görüldükten sonra ve durak listesinden önce; rota girişini engellemez.
+            item { NativeAdCard() }
 
             item {
                 Text(

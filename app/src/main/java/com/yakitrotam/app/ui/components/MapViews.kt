@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -124,12 +125,12 @@ fun RouteMap(
         // yalnızca rota ve durak katmanları yeniden çizilir.
         update = { view ->
             val density = view.resources.displayMetrics.density
-            view.getMapAsync { map -> map.getStyle { style -> drawTrip(map, style, tripResult, density) } }
+            view.getMapAsync { map -> map.getStyle { style -> drawTrip(view, map, style, tripResult, density) } }
         }
     )
 }
 
-private fun drawTrip(map: MapLibreMap, style: Style, trip: TripPlanResult, density: Float) {
+private fun drawTrip(view: MapView, map: MapLibreMap, style: Style, trip: TripPlanResult, density: Float) {
     listOf("stop-labels", "points", "route").forEach { style.getLayer(it)?.let(style::removeLayer) }
     listOf("points", "route").forEach { style.getSource(it)?.let(style::removeSource) }
 
@@ -195,7 +196,11 @@ private fun drawTrip(map: MapLibreMap, style: Style, trip: TripPlanResult, densi
             .build()
         // Altta kaynak yazısı var; işaretler onun altında kalmasın.
         fun dp(value: Int) = (value * density).toInt()
-        map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(32), dp(32), dp(32), dp(40)))
+        // Stil önbellekten hızlı yüklenirse buraya harita ölçülmeden gelinir; sıfır boyutla
+        // hesaplanan kamera rotayı alakasız bir bölgeye taşır. Yerleşim bitince uygulanır.
+        view.doOnLayout {
+            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(32), dp(32), dp(32), dp(40)))
+        }
     }
 }
 

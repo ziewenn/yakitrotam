@@ -149,8 +149,11 @@ fun FuelStopTimelineCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        listOf("${stop.distanceFromOriginKm.toInt()}. km", stop.station.city)
-                            .filter(String::isNotBlank).joinToString(" · "),
+                        listOf(
+                            "${stop.distanceFromOriginKm.toInt()}. km",
+                            stop.station.city,
+                            if (stop.pricePerLiterTL > 0) "${formatPrice(stop.pricePerLiterTL)}/L" else ""
+                        ).filter(String::isNotBlank).joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         maxLines = 1,
@@ -250,7 +253,8 @@ private fun AlternativeRow(
         BrandBadge(brand = alternative.station.brand, size = 32)
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                alternative.station.name,
+                // Adsız istasyon en azından yeriyle ayırt edilsin.
+                with(alternative.station) { if (isUnnamed && city.isNotBlank()) "$name · $city" else name },
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
                 maxLines = 1,

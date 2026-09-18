@@ -65,8 +65,14 @@ enum class FuelType(
     val fallbackPricePerLiterTL: Double
 ) {
     BENZIN("Benzin (95 Oktan)", 80.16),
-    DIZEL("Motorin (Dizel)", 95.53),
-    LPG("Otogaz (LPG)", 38.50);
+    DIZEL("Motorin (Dizel)", 100.19),
+    LPG("Otogaz (LPG)", 34.39);
+
+    fun shortName(): String = when (this) {
+        BENZIN -> "Benzin"
+        DIZEL -> "Motorin"
+        LPG -> "LPG"
+    }
 
     companion object {
         fun fromString(value: String): FuelType {

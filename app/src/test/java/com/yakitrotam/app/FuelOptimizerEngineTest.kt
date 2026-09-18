@@ -298,4 +298,79 @@ class FuelOptimizerEngineTest {
         assertEquals(without.stops.map { it.station.id }, withResolver.stops.map { it.station.id })
         assertNull(withResolver.stops.first().detourMinutes)
     }
+
+    @Test
+    fun `her durak kendi ilinin fiyatiyla hesaplanir`() {
+        val plan = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar,
+            // Doğuya gittikçe pahalanan uydurma fiyat: boylam × 2.
+            stopPricePerLiter = { it.longitude * 2 }
+        )
+
+        assertTrue(plan.stops.isNotEmpty())
+        plan.stops.forEach { stop ->
+            assertEquals(stop.station.longitude * 2, stop.pricePerLiterTL, 1e-9)
+            assertEquals(stop.refuelLiters * stop.pricePerLiterTL, stop.estimatedRefuelCostTL, 1e-6)
+        }
+    }
+
+    @Test
+    fun `varista yarim depo istenirse son dolum buna gore buyur`() {
+        val car = lowFuelCar.copy(currentLevelPercent = 60.0)
+        val reserveOnly = engineWith(corridorStations).calculateTripPlan(istanbul, ankara, istanbulAnkaraRoute, car)
+        val halfTank = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, car.copy(arrivalFuel = ArrivalFuel.HALF)
+        )
+
+        assertTrue("Rezervle varış yarım deponun altında kalmalı", reserveOnly.arrivalFuelPercent < 50.0)
+        assertNull(halfTank.warning)
+        assertTrue("Varışta en az yarım depo olmalı: %${halfTank.arrivalFuelPercent}", halfTank.arrivalFuelPercent >= 50.0)
+        assertTrue(halfTank.totalRefuelCostTL > reserveOnly.totalRefuelCostTL)
+    }
+
+    @Test
+    fun `yakit yetiyorsa ama varis hedefi tutmuyorsa yolda kalma uyarisi verilmez`() {
+        // Yakıt varışa rezervle yetiyor; yarım depo hedefi için yol üstünde hiç istasyon yok.
+        val car = lowFuelCar.copy(currentLevelPercent = 100.0, arrivalFuel = ArrivalFuel.HALF)
+        val plan = engineWith(emptyList()).calculateTripPlan(istanbul, ankara, istanbulAnkaraRoute, car)
+
+        assertEquals(0, plan.stopsCount)
+        assertTrue(plan.warning.orEmpty().contains("varışta depo hedefin"))
+    }
+
+    @Test
+    fun `adsiz istasyonlar alternatiflerde en sona kalir`() {
+        val unnamed = station("adsiz", FuelBrand.DIGER, 40.8035, 29.4325).copy(name = GasStation.UNNAMED)
+        val stations = listOf(
+            station("secilen", FuelBrand.OPET, 40.8040, 29.4330),
+            unnamed,
+            station("uzak_a", FuelBrand.SHELL, 40.8080, 29.4200),
+            station("uzak_b", FuelBrand.BP, 40.8090, 29.4100),
+            station("uzak_c", FuelBrand.AYTEMIZ, 40.8100, 29.4000)
+        )
+        // Adsız istasyon puanca en iyi alternatif olsa da adı olanlar önce gelmeli.
+        val roads = fakeRoads(
+            mapOf("secilen" to 0.0, "adsiz" to 0.1, "uzak_a" to 2.0, "uzak_b" to 2.5, "uzak_c" to 2.8), stations
+        )
+
+        val plan = engineWith(stations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, lowFuelCar, detourResolver = roads
+        )
+
+        val alternatives = plan.stops.first().alternatives.map { it.station.id }
+        assertEquals("secilen", plan.stops.first().station.id)
+        assertEquals(3, alternatives.size)
+        assertFalse("Yeterince adı olan aday varken adsız önerilmemeli: $alternatives", "adsiz" in alternatives)
+    }
+
+    @Test
+    fun `sure yol servisinden gelirse sabit hiz tahmini kullanilmaz`() {
+        val car = lowFuelCar.copy(currentLevelPercent = 100.0)
+        val plan = engineWith(emptyList()).calculateTripPlan(
+            istanbul, CityLocation("Gebze", "Kocaeli", 40.80, 29.43),
+            listOf(istanbul.latLng, LatLng(40.80, 29.43)), car, routeDurationMinutes = 61.0
+        )
+
+        assertEquals(61, plan.estimatedDrivingTimeMinutes)
+    }
 }

@@ -8,6 +8,7 @@ import com.yakitrotam.app.data.repository.FuelPriceRepository
 import com.yakitrotam.app.data.repository.GasStationRepository
 import com.yakitrotam.app.data.repository.LocationService
 import com.yakitrotam.app.data.repository.LocationUnavailableException
+import com.yakitrotam.app.data.repository.PriceTable
 import com.yakitrotam.app.data.repository.RouteRepository
 import com.yakitrotam.app.data.repository.SavedTripState
 import com.yakitrotam.app.data.repository.TripPreferences
@@ -114,7 +115,7 @@ class TripViewModel(
     /** Planlama ekranında güncel pompa fiyatını göstermek için arka planda çeker. */
     fun refreshPrices() {
         viewModelScope.launch {
-            val snapshot = fuelPriceRepository.getPrices(_uiState.value.origin.province)
+            val snapshot = fuelPriceRepository.getPrices(_uiState.value.origin.latLng)
             _uiState.update { it.copy(livePrice = snapshot) }
         }
     }
@@ -234,10 +235,11 @@ class TripViewModel(
             }
 
             try {
-                val routePoints = routeRepository.getRoutePoints(
+                val route = routeRepository.getRoute(
                     start = currentState.origin.latLng,
                     end = currentState.destination.latLng
                 )
+                val routePoints = route.points
 
                 if (routePoints.size < 2) {
                     _uiState.update {
@@ -255,7 +257,10 @@ class TripViewModel(
                 // İstasyonlar ve fiyatlar birbirinden bağımsız; paralel çekilir.
                 val (stations, priceSnapshot) = coroutineScope {
                     val stationsJob = async { stationRepository.loadStationsAlongRoute(routePoints) }
-                    val priceJob = async { fuelPriceRepository.getPrices(currentState.origin.province) }
+                    val priceJob = async {
+                        priceTable = fuelPriceRepository.getTable()
+                        fuelPriceRepository.getPrices(currentState.origin.latLng)
+                    }
                     stationsJob.await() to priceJob.await()
                 }
 
@@ -283,7 +288,9 @@ class TripViewModel(
                         vehicleProfile = currentState.vehicleProfile,
                         preferredBrands = currentState.selectedBrands,
                         fuelPrice = priceSnapshot,
-                        detourResolver = detourResolver
+                        detourResolver = detourResolver,
+                        stopPricePerLiter = stopPricing(currentState.vehicleProfile.fuelType),
+                        routeDurationMinutes = route.durationMinutes
                     )
                 }
 
@@ -310,6 +317,12 @@ class TripViewModel(
 
     private val detourResolver = DetourResolver(routeRepository::roadDetours)
 
+    /** Son plandaki il il fiyat tablosu; her durak kendi ilinin fiyatıyla hesaplanır. */
+    private var priceTable: PriceTable? = null
+
+    private fun stopPricing(fuelType: FuelType): (LatLng) -> Double? =
+        { point -> priceTable?.pricePerLiter(point, fuelType) }
+
     /** Kullanıcının alternatiflerden seçtiği duraklar; yeni rota hesaplanınca sıfırlanır. */
     private var forcedStops: Map<Int, String> = emptyMap()
 
@@ -334,7 +347,9 @@ class TripViewModel(
                     preferredBrands = trip.preferredBrands,
                     fuelPrice = trip.fuelPrice,
                     forcedStationIds = forcedStops,
-                    detourResolver = detourResolver
+                    detourResolver = detourResolver,
+                    stopPricePerLiter = stopPricing(trip.vehicleProfile.fuelType),
+                    routeDurationMinutes = trip.routeDurationMinutes
                 )
             }
             _uiState.update { it.copy(tripResult = updated) }

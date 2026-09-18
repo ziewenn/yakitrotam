@@ -1,6 +1,9 @@
 package com.yakitrotam.app.ui.screens
 
 import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -51,8 +54,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.yakitrotam.app.ads.AdBanner
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.FuelBrand
@@ -61,13 +66,13 @@ import com.yakitrotam.app.data.model.PlaceSuggestion
 import com.yakitrotam.app.data.model.VehicleProfile
 import com.yakitrotam.app.ui.components.BrandSheet
 import com.yakitrotam.app.ui.components.FuelLevelCard
+import com.yakitrotam.app.notify.PriceWatch
 import com.yakitrotam.app.ui.components.FuelPriceStrip
 import com.yakitrotam.app.ui.components.PlaceSearchDialog
 import com.yakitrotam.app.ui.components.SettingRow
 import com.yakitrotam.app.ui.components.SurfaceCard
 import com.yakitrotam.app.ui.components.VehicleSheet
 import com.yakitrotam.app.ui.components.formatDecimal
-import com.yakitrotam.app.ui.components.shortName
 import com.yakitrotam.app.ui.theme.AccentLime
 import com.yakitrotam.app.ui.theme.DarkBackground
 import com.yakitrotam.app.ui.theme.DarkBorder
@@ -119,6 +124,33 @@ fun TripPlannerScreen(
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (granted) onUseCurrentLocation() else onLocationPermissionDenied()
     }
+    val context = LocalContext.current
+    var priceAlertsEnabled by remember { mutableStateOf(PriceWatch.isEnabled(context)) }
+    val setPriceAlerts = { enabled: Boolean ->
+        PriceWatch.setEnabled(context, enabled)
+        priceAlertsEnabled = enabled
+        if (enabled) {
+            val fuel = uiState.vehicleProfile.fuelType.shortName()
+            Toast.makeText(context, "$fuel fiyatı değişince haber vereceğim", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) setPriceAlerts(true)
+        else Toast.makeText(context, "Bildirim izni olmadan haber veremem", Toast.LENGTH_SHORT).show()
+    }
+    val togglePriceAlerts = {
+        val needsPermission = Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS
+        ) != PackageManager.PERMISSION_GRANTED
+        when {
+            priceAlertsEnabled -> setPriceAlerts(false)
+            needsPermission -> notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else -> setPriceAlerts(true)
+        }
+    }
+
     val requestLocation = {
         locationPermissionLauncher.launch(
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -182,6 +214,8 @@ fun TripPlannerScreen(
             FuelPriceStrip(
                 snapshot = uiState.livePrice,
                 selectedFuelType = uiState.vehicleProfile.fuelType,
+                priceAlertsEnabled = priceAlertsEnabled,
+                onTogglePriceAlerts = togglePriceAlerts,
                 modifier = Modifier.padding(top = 4.dp)
             )
 

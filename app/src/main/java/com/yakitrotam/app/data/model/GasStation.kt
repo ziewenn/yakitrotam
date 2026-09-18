@@ -26,6 +26,10 @@ data class GasStation(
     val location: LatLng
         get() = LatLng(latitude, longitude)
 
+    /** OSM'de adı da markası da girilmemiş istasyon. */
+    val isUnnamed: Boolean
+        get() = name == UNNAMED
+
     fun fuelAvailability(fuelType: FuelType): Boolean? = when (fuelType) {
         FuelType.BENZIN -> hasGasoline
         FuelType.DIZEL -> hasDiesel
@@ -36,4 +40,8 @@ data class GasStation(
     fun supportsFuel(fuelType: FuelType): Boolean = fuelAvailability(fuelType) != false
 
     fun confirmsFuel(fuelType: FuelType): Boolean = fuelAvailability(fuelType) == true
+
+    companion object {
+        const val UNNAMED = "Markasız istasyon"
+    }
 }

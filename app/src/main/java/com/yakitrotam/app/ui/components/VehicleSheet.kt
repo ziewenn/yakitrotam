@@ -1,5 +1,7 @@
 package com.yakitrotam.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,11 +12,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,12 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.yakitrotam.app.data.model.ArrivalFuel
 import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.FuelType
 import com.yakitrotam.app.data.model.VehicleProfile
@@ -54,12 +62,6 @@ import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
-
-fun FuelType.shortName(): String = when (this) {
-    FuelType.BENZIN -> "Benzin"
-    FuelType.DIZEL -> "Motorin"
-    FuelType.LPG -> "LPG"
-}
 
 /**
  * Araç bilgileri nadiren değişir; bu yüzden ana ekranda yer kaplamaz, alttan açılan
@@ -76,6 +78,8 @@ fun VehicleSheet(
     val focusManager = LocalFocusManager.current
     var consumptionText by remember { mutableStateOf(formatDecimal(vehicleProfile.consumptionPer100Km)) }
     var capacityText by remember { mutableStateOf(formatDecimal(vehicleProfile.tankCapacityLiters)) }
+    // Çoğu sürücünün dokunmayacağı ayarlar; sayfayı kalabalıklaştırmasın diye kapalı başlar.
+    var showAdvanced by remember { mutableStateOf(false) }
 
     fun commitConsumption() {
         val value = parseDecimal(consumptionText)?.coerceIn(2.0, 30.0) ?: vehicleProfile.consumptionPer100Km
@@ -101,6 +105,7 @@ fun VehicleSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .navigationBarsPadding()
                 .padding(bottom = 16.dp),
@@ -182,6 +187,53 @@ fun VehicleSheet(
                 )
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showAdvanced = !showAdvanced }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Gelişmiş ayarlar", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                        Text(
+                            "Rezerv %${vehicleProfile.reserveThresholdPercent.toInt()} · " +
+                                "Varışta ${vehicleProfile.arrivalFuel.label.lowercase()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted
+                        )
+                    }
+                    Icon(
+                        if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (showAdvanced) "Gizle" else "Göster",
+                        tint = TextSecondary
+                    )
+                }
+
+                AnimatedVisibility(visible = showAdvanced) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ChoiceGroup(
+                            title = "Rezerv payı",
+                            hint = "Depo bu seviyenin altına inmeden durak planlanır.",
+                            options = listOf(10.0, 15.0, 20.0, 25.0),
+                            selected = vehicleProfile.reserveThresholdPercent,
+                            label = { "%${it.toInt()}" },
+                            onSelect = { onUpdateProfile(vehicleProfile.copy(reserveThresholdPercent = it)) }
+                        )
+                        ChoiceGroup(
+                            title = "Varışta depoda en az",
+                            hint = "Gideceğin yerde istasyon yoksa ya da pahalıysa yükselt; son durakta ona göre yakıt alınır.",
+                            options = ArrivalFuel.entries,
+                            selected = vehicleProfile.arrivalFuel,
+                            label = { it.label },
+                            onSelect = { onUpdateProfile(vehicleProfile.copy(arrivalFuel = it)) }
+                        )
+                    }
+                }
+            }
+
             Button(
                 onClick = {
                     commitConsumption()
@@ -259,6 +311,33 @@ fun BrandSheet(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
             ) { Text("Tamam", style = MaterialTheme.typography.titleLarge) }
         }
+    }
+}
+
+/** Başlık, tek seçimli çipler ve ne işe yaradığını anlatan kısa not. */
+@Composable
+private fun <T> ChoiceGroup(
+    title: String,
+    hint: String,
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                FilterChip(
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                    label = { Text(label(option)) },
+                    colors = chipColors(),
+                    border = null
+                )
+            }
+        }
+        Text(hint, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
     }
 }
 

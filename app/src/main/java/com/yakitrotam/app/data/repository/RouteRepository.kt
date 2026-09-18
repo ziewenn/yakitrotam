@@ -3,6 +3,7 @@ package com.yakitrotam.app.data.repository
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.RoadDetour
+import com.yakitrotam.app.data.model.RoutePath
 import com.yakitrotam.app.util.GeoUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,9 +47,9 @@ class RouteRepository {
      * İnternet varsa OSRM API'den gerçek sürüş rotasını alır.
      * Başarısız olursa veya çevrimdışıysa akıllı otoyol koridoru fallback'ini kullanır.
      */
-    suspend fun getRoutePoints(start: LatLng, end: LatLng): List<LatLng> = withContext(Dispatchers.IO) {
+    suspend fun getRoute(start: LatLng, end: LatLng): RoutePath = withContext(Dispatchers.IO) {
         try {
-            val osrmUrl = "https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson"
+            val osrmUrl = "${Endpoints.osrm}/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson"
             val request = Request.Builder().url(osrmUrl).build()
             val response = httpClient.newCall(request).execute()
 
@@ -58,7 +59,8 @@ class RouteRepository {
                     val json = JSONObject(body)
                     val routes = json.optJSONArray("routes")
                     if (routes != null && routes.length() > 0) {
-                        val geometry = routes.getJSONObject(0).getJSONObject("geometry")
+                        val route = routes.getJSONObject(0)
+                        val geometry = route.getJSONObject("geometry")
                         val coordinates = geometry.getJSONArray("coordinates")
                         val points = mutableListOf<LatLng>()
                         for (i in 0 until coordinates.length()) {
@@ -68,7 +70,8 @@ class RouteRepository {
                             points.add(LatLng(lat, lng))
                         }
                         if (points.isNotEmpty()) {
-                            return@withContext points
+                            val durationMinutes = route.optDouble("duration").takeIf { it > 0 }?.div(60.0)
+                            return@withContext RoutePath(points, durationMinutes)
                         }
                     }
                 }
@@ -77,7 +80,7 @@ class RouteRepository {
             // Ağ hatası durumunda fallback mekanizması devreye girer
         }
 
-        return@withContext generateCorridorFallback(start, end)
+        return@withContext RoutePath(generateCorridorFallback(start, end))
     }
 
     private val detourCache = object : LinkedHashMap<String, List<RoadDetour?>>(16, 0.75f, true) {
@@ -102,7 +105,7 @@ class RouteRepository {
         synchronized(detourCache) { detourCache[coordinates] }?.let { return it }
 
         return try {
-            val url = "https://router.project-osrm.org/table/v1/driving/$coordinates?annotations=duration,distance"
+            val url = "${Endpoints.osrm}/table/v1/driving/$coordinates?annotations=duration,distance"
             httpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
                 if (!response.isSuccessful) return null
                 val json = JSONObject(response.body?.string().orEmpty())

@@ -43,7 +43,11 @@ class FuelOptimizerEngine(
         /** Kullanıcının alternatiflerden seçtiği istasyonlar: durak sırası -> istasyon kimliği. */
         forcedStationIds: Map<Int, String> = emptyMap(),
         /** Ağ çağrısı yapabilir; bu yüzden fonksiyon arka plan iş parçacığında çağrılmalıdır. */
-        detourResolver: DetourResolver? = null
+        detourResolver: DetourResolver? = null,
+        /** Durağın bulunduğu ildeki litre fiyatı; null dönerse [fuelPrice] (kalkış ili) kullanılır. */
+        stopPricePerLiter: ((LatLng) -> Double?)? = null,
+        /** Yol servisinin duraksız sürüş süresi; yoksa ortalama hızdan tahmin edilir. */
+        routeDurationMinutes: Double? = null
     ): TripPlanResult {
         val cumulative = GeoUtils.cumulativeDistancesKm(routePoints)
         val totalDistanceKm = cumulative.lastOrNull() ?: 0.0
@@ -51,6 +55,8 @@ class FuelOptimizerEngine(
         val consumptionRate = vehicleProfile.consumptionPer100Km.coerceAtLeast(1.0)
         val tankCapacity = vehicleProfile.tankCapacityLiters.coerceAtLeast(10.0)
         val reserveLiters = vehicleProfile.reserveLiters.coerceIn(0.0, tankCapacity * 0.5)
+        // Varışta istenen en az yakıt; bir dolumla tutturulabilmesi için deponun %60'ını aşamaz.
+        val arrivalMinLiters = vehicleProfile.arrivalMinLiters.coerceIn(reserveLiters, tankCapacity * 0.6)
         val pricePerLiter = fuelPrice.priceFor(vehicleProfile.fuelType)
 
         // Marka tercihi burada filtre değil, puanlama kriteridir: tercih edilen marka
@@ -75,8 +81,8 @@ class FuelOptimizerEngine(
             val remainingKm = totalDistanceKm - alongKm
             val litersToFinish = remainingKm.toLiters(consumptionRate)
 
-            // Rezerve dokunmadan varış noktasına yetiyorsa durak gerekmez.
-            if (usableLiters >= litersToFinish) break
+            // Varışta istenen yakıt kalacak şekilde yetiyorsa durak gerekmez.
+            if (fuelLiters - arrivalMinLiters >= litersToFinish) break
 
             val usedStationIds = stops.mapTo(HashSet()) { it.station.id }
             val reachable = candidates.filter { candidate ->
@@ -87,7 +93,11 @@ class FuelOptimizerEngine(
             }
 
             if (reachable.isEmpty()) {
-                warning = if (candidates.isEmpty()) {
+                warning = if (usableLiters >= litersToFinish) {
+                    // Yolda kalma riski yok; yalnızca "varışta depo" tercihi tutturulamıyor.
+                    "Varışa yakın uygun istasyon olmadığı için varışta depo hedefin tutmuyor; " +
+                        "varınca yakıt alman gerekebilir."
+                } else if (candidates.isEmpty()) {
                     "Bu güzergahta OpenStreetMap üzerinde kayıtlı akaryakıt istasyonu bulunamadı."
                 } else {
                     "Kalan ${usableLiters.toKm(consumptionRate).toInt()} km menzil içinde uygun istasyon " +
@@ -144,7 +154,8 @@ class FuelOptimizerEngine(
                     it.candidate.station.id != chosen.candidate.station.id &&
                         GeoUtils.distanceKm(it.candidate.station.location, chosen.candidate.station.location) > 0.3
                 }
-                .sortedBy { it.score }
+                // Adı da markası da olmayan istasyonlar ancak başka seçenek yoksa önerilir.
+                .sortedWith(compareBy<Scored>({ it.candidate.station.isUnnamed }, { it.score }))
                 .take(MAX_ALTERNATIVES)
                 .map { StopAlternative(it.candidate.station, it.candidate.alongKm, it.extraKm / 2, it.extraMinutes) }
 
@@ -153,6 +164,7 @@ class FuelOptimizerEngine(
             val burnedLiters = (legKm + oneWayDetourKm).toLiters(consumptionRate)
             val arrivalFuel = (fuelLiters - burnedLiters).coerceAtLeast(0.0)
             val refuelLiters = tankCapacity - arrivalFuel
+            val stopPrice = stopPricePerLiter?.invoke(chosen.candidate.station.location) ?: pricePerLiter
 
             stops.add(
                 FuelStop(
@@ -163,10 +175,11 @@ class FuelOptimizerEngine(
                     arrivalFuelLevelPercent = (arrivalFuel / tankCapacity) * 100.0,
                     arrivalFuelLiters = arrivalFuel,
                     refuelLiters = refuelLiters,
-                    estimatedRefuelCostTL = refuelLiters * pricePerLiter,
+                    estimatedRefuelCostTL = refuelLiters * stopPrice,
                     detourDistanceKm = oneWayDetourKm,
                     alternatives = alternatives,
-                    detourMinutes = chosen.extraMinutes
+                    detourMinutes = chosen.extraMinutes,
+                    pricePerLiterTL = stopPrice
                 )
             )
 
@@ -177,19 +190,19 @@ class FuelOptimizerEngine(
         }
 
         // Son durakta depoyu tam doldurmak, varışa 30 km kala dolum yapan sürücüye
-        // gereksiz bir fatura çıkarır. Sadece varışa + rezerve + %15 pay kadar alınır.
+        // gereksiz bir fatura çıkarır. Sadece varışa + varışta istenen yakıt + %15 pay kadar alınır.
         if (stops.isNotEmpty()) {
             val last = stops.last()
             val neededLiters = (totalDistanceKm - last.distanceFromOriginKm + last.detourDistanceKm)
                 .toLiters(consumptionRate)
-            val targetLiters = (neededLiters + reserveLiters) * FINAL_FILL_BUFFER
+            val targetLiters = (neededLiters + arrivalMinLiters) * FINAL_FILL_BUFFER
             val trimmedRefuel = (targetLiters - last.arrivalFuelLiters)
                 .coerceIn(0.0, tankCapacity - last.arrivalFuelLiters)
 
             if (trimmedRefuel < last.refuelLiters) {
                 stops[stops.lastIndex] = last.copy(
                     refuelLiters = trimmedRefuel,
-                    estimatedRefuelCostTL = trimmedRefuel * pricePerLiter
+                    estimatedRefuelCostTL = trimmedRefuel * last.pricePerLiterTL
                 )
                 fuelLiters = last.arrivalFuelLiters + trimmedRefuel -
                     last.detourDistanceKm.toLiters(consumptionRate)
@@ -206,7 +219,7 @@ class FuelOptimizerEngine(
             destination = destination,
             totalDistanceKm = totalDistanceKm,
             totalDrivenDistanceKm = drivenKm,
-            estimatedDrivingTimeMinutes = estimateMinutes(totalDistanceKm, stops),
+            estimatedDrivingTimeMinutes = estimateMinutes(totalDistanceKm, routeDurationMinutes, stops),
             stops = stops,
             totalFuelConsumedLiters = totalFuelConsumed,
             totalEstimatedCostTL = totalFuelConsumed * pricePerLiter,
@@ -216,7 +229,8 @@ class FuelOptimizerEngine(
             vehicleProfile = vehicleProfile,
             preferredBrands = preferredBrands,
             fuelPrice = fuelPrice,
-            warning = warning
+            warning = warning,
+            routeDurationMinutes = routeDurationMinutes
         )
     }
 
@@ -283,10 +297,14 @@ class FuelOptimizerEngine(
         }
     }
 
-    /** Otoyol ağırlıklı ortalama 92 km/s + durak başına 12 dk mola + duraklara sapma süresi. */
-    private fun estimateMinutes(routeKm: Double, stops: List<FuelStop>): Int {
+    /**
+     * Yol servisinin sürüş süresi (yoksa otoyol ağırlıklı 92 km/s ortalama) +
+     * durak başına 12 dk mola + duraklara sapma süresi.
+     */
+    private fun estimateMinutes(routeKm: Double, routeDurationMinutes: Double?, stops: List<FuelStop>): Int {
+        val drivingMinutes = routeDurationMinutes ?: ((routeKm / 92.0) * 60)
         val detourMinutes = stops.sumOf { it.detourMinutes ?: (it.extraRoadKm / 50.0 * 60.0) }
-        return ((routeKm / 92.0) * 60 + stops.size * 12 + detourMinutes).toInt()
+        return (drivingMinutes + stops.size * 12 + detourMinutes).toInt()
     }
 
     private fun Double.toLiters(consumptionPer100Km: Double): Double =

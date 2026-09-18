@@ -29,9 +29,10 @@ dakika) hesaplanır. Penceredeki adayların hepsi büyük sapma gerektiriyorsa
 daha erken ama gerçekten yol üstünde olan bir istasyon seçilir. Servis cevap
 vermezse kuş uçuşu tahmine geri dönülür.
 
-Maliyet hesabı canlı pompa fiyatından yapılır. Son durakta depo tam
-doldurulmaz; varışa yetecek miktar, rezerv ve %15 güvenlik payı kadar yakıt
-alınır.
+Maliyet hesabı canlı pompa fiyatından yapılır ve her durak bulunduğu ilin
+fiyatıyla hesaplanır. Son durakta depo tam doldurulmaz; varışa yetecek miktar,
+varışta depoda kalması istenen yakıt (varsayılan: rezerv) ve %15 güvenlik payı
+kadar yakıt alınır.
 
 ## Veri kaynakları
 
@@ -41,7 +42,8 @@ anahtarsızdır.
 | Veri | Kaynak |
 | --- | --- |
 | Akaryakıt istasyonları | OpenStreetMap Overpass API (ODbL) |
-| Pompa fiyatları | Opet il bazlı fiyat servisi |
+| Benzin ve motorin fiyatı | Opet fiyat servisi (tüm iller tek istekte) |
+| Otogaz fiyatı | Petrol Ofisi fiyat sayfası |
 | Sürüş rotası | OSRM |
 | Adres arama | Photon |
 | Ters coğrafi kodlama | Nominatim |
@@ -55,8 +57,15 @@ bu ücretsizdir.
 İstasyon verisi uygulamaya gömülü değildir, her rota için yeniden çekilir.
 Böylece gerçekte var olmayan bir konuma durak konmaz.
 
-Opet servisi benzin ve motorini yayınlıyor, otogaz yayınlamıyor. LPG fiyatı
-benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor.
+Opet servisi benzin ve motorini yayınlıyor, otogaz yayınlamıyor. Otogaz fiyatı
+bu yüzden Petrol Ofisi'nin fiyat sayfasındaki tablodan okunuyor. Sayfaya
+ulaşılamaz ya da tablo düzeni değişirse LPG fiyatı benzine oranlanarak tahmin
+ediliyor ve arayüzde "tahmini" olarak işaretleniyor.
+
+Bu sunucuların hiçbirinin hizmet garantisi yok. Adresleri uygulamaya gömülü
+olmakla birlikte açılışta `ziewenn.github.io/yakitrotam/config.json` dosyasından
+da okunur; biri kapanırsa mağaza güncellemesi beklemeden değiştirilebilir.
+Yalnızca `https` adresleri kabul edilir.
 
 ## Özellikler
 
@@ -77,6 +86,11 @@ benzine oranlanarak tahmin ediliyor ve arayüzde "tahmini" olarak işaretleniyor
 - Adresi olmayan noktalar için haritadan konum seçme.
 - Planı düz metin olarak paylaşma (WhatsApp, SMS, e-posta).
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
+- İsteğe bağlı fiyat bildirimi: seçili yakıt türünün kalkış ilindeki fiyatı
+  değişince haber verir. Karşılaştırma cihazda, WorkManager ile 6 saatte bir
+  yapılır; sunucu yoktur.
+- Gelişmiş ayarlar (araç sayfasında kapalı gelir): rezerv payı ve varışta depoda
+  kalması istenen en az yakıt (rezerv, çeyrek ya da yarım depo).
 - Son girilen araç bilgileri (depo hacmi, tüketim, yakıt türü, doluluk), marka
   tercihi, kalkış ve varış noktası uygulama kapatılıp açılınca korunur. Adres
   aramasında son seçilen yerler en üstte gösterilir.
@@ -181,7 +195,8 @@ app/src/main/java/com/yakitrotam/app/
 │   │   ├── TripModels.kt           Duraklar ve seyahat özeti
 │   │   └── VehicleProfile.kt       Depo, tüketim, menzil formülleri
 │   └── repository/
-│       ├── FuelPriceRepository.kt  Opet fiyat servisi, il eşlemesi, önbellek
+│       ├── Endpoints.kt            Sunucu adresleri ve uzaktan ayar dosyası
+│       ├── FuelPriceRepository.kt  Opet ve Petrol Ofisi fiyatları, il tablosu, önbellek
 │       ├── GasStationRepository.kt İstasyon önbelleği ve yakıt/marka filtresi
 │       ├── LocationService.kt      Photon arama, Nominatim, cihaz konumu
 │       ├── OverpassStationSource.kt Koridor sorgusu ve OSM etiket ayrıştırma
@@ -189,6 +204,8 @@ app/src/main/java/com/yakitrotam/app/
 │       └── TripPreferences.kt      Son girilen ayarların saklanması
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Menzil simülasyonu ve durak seçimi
+├── notify/
+│   └── PriceWatch.kt               Fiyat değişim bildirimi (WorkManager)
 ├── ui/
 │   ├── components/                 Kadran, fiyat şeridi, zaman çizelgesi, MapLibre haritaları
 │   ├── screens/                    Planlama ve özet ekranları
@@ -196,16 +213,20 @@ app/src/main/java/com/yakitrotam/app/
 │   └── viewmodel/
 └── util/
     ├── GeoUtils.kt                 Haversine, rota izdüşümü, interpolasyon
+    ├── Provinces.kt                İl merkezleri, noktadan fiyat bölgesi bulma
     ├── TripShareText.kt            Paylaşılan plan metni
     └── GoogleMapsLauncher.kt       Maps intent'i
 ```
 
 ## Bilinen sınırlar
 
-- LPG fiyatı tahminidir. Ücretsiz ve makine okunabilir bir otogaz fiyat kaynağı
-  bulunamadı.
+- Otogaz fiyatı bir web sayfasından ayrıştırılıyor; sayfa düzeni değişirse
+  yeni sürüme kadar tahmine düşer.
+- Durağın ili, en yakın il merkezine göre belirlenir. İl sınırına yakın
+  istasyonlarda komşu ilin fiyatı kullanılabilir; fark birkaç kuruştur.
 - İstasyon bilgisi OSM'nin kalitesine bağlıdır. Markası veya yakıt türü
   etiketlenmemiş istasyonlar "Diğer" olarak görünür ve puanlamada geri düşer.
 - Ağ yoksa rota dahili otoyol koridoruna düşer, istasyon listesi ise boş kalır;
   bu durumda plan üretilmez.
-- Süre tahmini sabit ortalama hıza dayanır, trafiği hesaba katmaz.
+- Süre OSRM'nin sürüş süresine durak molaları eklenerek bulunur, trafiği
+  hesaba katmaz.

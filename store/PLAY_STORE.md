@@ -158,9 +158,10 @@ Yolculuk özeti:
 
 Neden YakıtRotam?
 - İstasyonlar OpenStreetMap'teki gerçek kayıtlardan her rota için yeniden alınır.
-- Benzin ve motorin fiyatları il bazında günceldir. LPG fiyatı tahminidir ve öyle işaretlenir.
+- Benzin, motorin ve LPG fiyatları il bazında günceldir; her durak kendi ilinin fiyatıyla hesaplanır.
+- İstersen yakıt fiyatı değişince bildirim alırsın.
 - Bir istasyona ancak mevcut yakıtınla gerçekten ulaşabiliyorsan durak olarak önerilir.
-- Son durakta depoyu gereksiz yere doldurtmaz; varışa yetecek kadar yakıt alman önerilir.
+- Son durakta depoyu gereksiz yere doldurtmaz; varışa yetecek kadar yakıt alman önerilir. Varışta depoda ne kadar kalsın, sen seçersin.
 - Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz, TP, Alpet ve Lukoil arasından tercih ettiğin markalar öne alınır.
 - Araç bilgilerin ve son aradığın yerler hatırlanır, her seferinde yeniden girmezsin.
 - Plan hazır olunca tek dokunuşla tüm duraklarıyla Google Haritalar'da açılır.

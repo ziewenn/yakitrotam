@@ -20,6 +20,7 @@ import com.yakitrotam.app.data.repository.GasStationRepository
 import com.yakitrotam.app.data.repository.LocationService
 import com.yakitrotam.app.data.repository.FuelPriceRepository
 import com.yakitrotam.app.data.repository.RouteRepository
+import com.yakitrotam.app.data.repository.Endpoints
 import com.yakitrotam.app.data.repository.TripPreferences
 import com.yakitrotam.app.domain.FuelOptimizerEngine
 import com.yakitrotam.app.ui.screens.RouteSummaryScreen
@@ -58,6 +59,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
         super.onCreate(savedInstanceState)
+        Endpoints.init(this)
         Ads.initialize(this)
 
         setContent {

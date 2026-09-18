@@ -39,7 +39,9 @@ data class FuelStop(
     /** Aynı bölgede, mevcut yakıtla ulaşılabilen ve bu durağın yerine seçilebilecek istasyonlar. */
     val alternatives: List<StopAlternative> = emptyList(),
     /** Gerçek yol ağından hesaplanan ek süre; yol verisi alınamadıysa null. */
-    val detourMinutes: Double? = null
+    val detourMinutes: Double? = null,
+    /** Durağın bulunduğu ildeki litre fiyatı; tutar bununla hesaplanır. */
+    val pricePerLiterTL: Double = 0.0
 ) {
     val extraRoadKm: Double
         get() = detourDistanceKm * 2
@@ -55,6 +57,9 @@ data class StopAlternative(
     val extraRoadKm: Double
         get() = detourDistanceKm * 2
 }
+
+/** Rota çizgisi ve yol servisinin süre tahmini (yedek rotada süre yoktur). */
+data class RoutePath(val points: List<LatLng>, val durationMinutes: Double? = null)
 
 /** Bir istasyona uğramanın, doğrudan devam etmeye göre gerçek yol ağındaki ek maliyeti. */
 data class RoadDetour(
@@ -84,7 +89,9 @@ data class TripPlanResult(
     val preferredBrands: Set<FuelBrand>,
     val fuelPrice: FuelPriceSnapshot,
     /** Menzil içinde uygun istasyon bulunamadıysa kullanıcıya gösterilecek uyarı. */
-    val warning: String? = null
+    val warning: String? = null,
+    /** Yol servisinin verdiği duraksız sürüş süresi; alternatif seçilince yeniden kullanılır. */
+    val routeDurationMinutes: Double? = null
 ) {
     val stopsCount: Int
         get() = stops.size

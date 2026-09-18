@@ -60,7 +60,7 @@ class DemoRoutePlanTest {
             val nameTag = c[5]
             GasStation(
                 id = "osm-${c[0]}-${c[1]}",
-                name = nameTag.ifBlank { brandTag.ifBlank { "İsimsiz akaryakıt istasyonu" } },
+                name = nameTag.ifBlank { brandTag.ifBlank { GasStation.UNNAMED } },
                 brand = FuelBrand.fromString(brandTag.ifBlank { nameTag }),
                 latitude = c[2].toDouble(),
                 longitude = c[3].toDouble(),

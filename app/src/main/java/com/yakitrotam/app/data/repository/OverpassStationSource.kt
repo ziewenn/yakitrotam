@@ -4,6 +4,7 @@ import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.GasStation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.util.GeoUtils
+import com.yakitrotam.app.util.Provinces
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -25,8 +26,11 @@ import kotlin.math.cos
  * Veriler ODbL lisanslıdır, kaynak gösterimi RouteSummaryScreen'de yapılır.
  */
 class OverpassStationSource(
-    private val endpoints: List<String> = DEFAULT_ENDPOINTS
+    /** null ise güncel sunucu listesi her sorguda [Endpoints]'ten okunur. */
+    private val fixedEndpoints: List<String>? = null
 ) {
+    private val endpoints: List<String>
+        get() = fixedEndpoints ?: Endpoints.overpass
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -129,12 +133,14 @@ class OverpassStationSource(
             stations.add(
                 GasStation(
                     id = "osm-$osmType-$osmId",
-                    name = nameTag.ifBlank { brandTag.ifBlank { "İsimsiz akaryakıt istasyonu" } },
+                    name = nameTag.ifBlank { brandTag.ifBlank { GasStation.UNNAMED } },
                     brand = brand,
                     latitude = lat,
                     longitude = lon,
                     highway = tags.optString("addr:street"),
-                    city = tags.optString("addr:city").ifBlank { tags.optString("addr:district") },
+                    // OSM'de adres çoğu istasyonda boş; kartta "154. km" yalnız kalmasın diye ile düşülür.
+                    city = tags.optString("addr:city").ifBlank { tags.optString("addr:district") }
+                        .ifBlank { Provinces.nearest(LatLng(lat, lon)).displayName },
                     hasLpg = tags.yesNo("fuel:lpg"),
                     hasDiesel = tags.yesNo("fuel:diesel"),
                     hasGasoline = tags.anyYesNo(GASOLINE_TAGS),
@@ -226,11 +232,6 @@ class OverpassStationSource(
         private const val USER_AGENT = "YakitRotam/1.0 (Android; OSM fuel station lookup)"
         private val GASOLINE_TAGS = listOf(
             "fuel:octane_95", "fuel:octane_91", "fuel:octane_98", "fuel:octane_100", "fuel:e10"
-        )
-        val DEFAULT_ENDPOINTS = listOf(
-            "https://overpass-api.de/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter",
-            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
         )
     }
 }

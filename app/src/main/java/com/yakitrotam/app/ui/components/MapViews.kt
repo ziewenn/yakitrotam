@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.yakitrotam.app.data.model.LatLng
+import com.yakitrotam.app.data.repository.Endpoints
 import com.yakitrotam.app.data.model.TripPlanResult
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -38,7 +39,6 @@ import org.maplibre.android.geometry.LatLng as MapLatLng
  * OpenFreeMap: OpenStreetMap tabanlı, anahtarsız ve ticari kullanıma açık ücretsiz
  * harita karoları. Google Maps SDK ücretli olduğu için kullanılmıyor.
  */
-private const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/dark"
 
 private val TURKEY_CENTER = MapLatLng(39.0, 35.0)
 
@@ -116,7 +116,7 @@ fun RouteMap(
             mapView.keepGesturesInside()
             mapView.getMapAsync { map ->
                 map.basicSettings()
-                map.setStyle(Style.Builder().fromUri(MAP_STYLE_URL))
+                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyle))
             }
             mapView
         },
@@ -226,7 +226,7 @@ fun PickerMap(
                     .target(initialCenter?.let { MapLatLng(it.latitude, it.longitude) } ?: TURKEY_CENTER)
                     .zoom(if (initialCenter != null) 13.0 else 5.2)
                     .build()
-                map.setStyle(Style.Builder().fromUri(MAP_STYLE_URL))
+                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyle))
                 map.addOnCameraIdleListener {
                     map.cameraPosition.target?.let { onCenterChanged(LatLng(it.latitude, it.longitude)) }
                 }

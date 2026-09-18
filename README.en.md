@@ -30,9 +30,10 @@ rejoining. If every candidate in the window needs a long detour, an earlier
 station that is actually on the road is picked instead. If the service does not
 answer, the straight-line estimate is used as a fallback.
 
-Costs are computed from live pump prices. The final stop does not fill the tank
-to the brim; it takes only what is needed to reach the destination, plus the
-reserve and a 15 percent margin.
+Costs are computed from live pump prices, and each stop is priced with the
+province it is in. The final stop does not fill the tank to the brim; it takes
+only what is needed to reach the destination, plus the fuel you want left on
+arrival (the reserve by default) and a 15 percent margin.
 
 ## Data sources
 
@@ -41,7 +42,8 @@ The app needs no API keys. Every service it talks to is free and keyless.
 | Data | Source |
 | --- | --- |
 | Fuel stations | OpenStreetMap Overpass API (ODbL) |
-| Pump prices | Opet province-level price service |
+| Petrol and diesel prices | Opet price service (all provinces in one request) |
+| Autogas (LPG) price | Petrol Ofisi price page |
 | Driving route | OSRM |
 | Address search | Photon |
 | Reverse geocoding | Nominatim |
@@ -55,8 +57,15 @@ costs nothing.
 Station data is not bundled with the app; it is fetched fresh for every route.
 That is what keeps stops from landing on locations where no station exists.
 
-Opet publishes petrol and diesel but not LPG. The LPG price is estimated as a
-ratio of the petrol price and is labelled as an estimate in the UI.
+Opet publishes petrol and diesel but not LPG, so the autogas price is read from
+the table on Petrol Ofisi's price page. If the page is unreachable or its layout
+changes, the LPG price falls back to a ratio of the petrol price and is labelled
+as an estimate in the UI.
+
+None of these servers comes with a service guarantee. Their addresses are built
+into the app but are also read at startup from
+`ziewenn.github.io/yakitrotam/config.json`, so a dead server can be swapped
+without waiting for a store update. Only `https` addresses are accepted.
 
 ## Features
 
@@ -77,6 +86,11 @@ ratio of the petrol price and is labelled as an estimate in the UI.
 - Pick a location on the map for places without an address.
 - Share the plan as plain text (WhatsApp, SMS, email).
 - All stops are passed to Google Maps as waypoints.
+- Optional price alerts: a notification when the price of your fuel type changes
+  in your origin province. The comparison runs on the device every 6 hours via
+  WorkManager; there is no server.
+- Advanced settings (collapsed by default in the vehicle sheet): reserve margin
+  and the minimum fuel to have left on arrival (reserve, quarter or half tank).
 - The last vehicle settings (tank size, consumption, fuel type, fill level),
   brand preference, origin and destination survive an app restart. Recently
   picked places are listed first in the address search.
@@ -183,7 +197,8 @@ app/src/main/java/com/yakitrotam/app/
 │   │   ├── TripModels.kt           Stops and trip summary
 │   │   └── VehicleProfile.kt       Tank, consumption, range formulas
 │   └── repository/
-│       ├── FuelPriceRepository.kt  Opet price service, province lookup, cache
+│       ├── Endpoints.kt            Server addresses and the remote settings file
+│       ├── FuelPriceRepository.kt  Opet and Petrol Ofisi prices, province table, cache
 │       ├── GasStationRepository.kt Station cache, fuel and brand filtering
 │       ├── LocationService.kt      Photon search, Nominatim, device location
 │       ├── OverpassStationSource.kt Corridor query and OSM tag parsing
@@ -191,6 +206,8 @@ app/src/main/java/com/yakitrotam/app/
 │       └── TripPreferences.kt      Persists the last entered settings
 ├── domain/
 │   └── FuelOptimizerEngine.kt      Range simulation and stop selection
+├── notify/
+│   └── PriceWatch.kt               Price change notification (WorkManager)
 ├── ui/
 │   ├── components/                 Gauge, price strip, timeline, MapLibre maps
 │   ├── screens/                    Planner and summary screens
@@ -198,16 +215,20 @@ app/src/main/java/com/yakitrotam/app/
 │   └── viewmodel/
 └── util/
     ├── GeoUtils.kt                 Haversine, route projection, interpolation
+    ├── Provinces.kt                Province centres, price region lookup for a point
     ├── TripShareText.kt            Shared plan text
     └── GoogleMapsLauncher.kt       Maps intent
 ```
 
 ## Known limitations
 
-- The LPG price is an estimate. No free, machine-readable autogas price feed was
-  found.
+- The autogas price is parsed from a web page; if its layout changes the app
+  falls back to an estimate until the next release.
+- A stop's province is taken from the nearest province centre. Stations close to
+  a border may get the neighbouring province's price; the difference is a few
+  kuruş.
 - Station quality depends on OSM. Stations without a brand or fuel tags show up
   as "Diğer" and score lower.
 - Without a network connection the route falls back to a built-in motorway
   corridor, but the station list stays empty, so no plan is produced.
-- Travel time assumes a fixed average speed and ignores traffic.
+- Travel time is OSRM's driving time plus a break per stop; traffic is ignored.

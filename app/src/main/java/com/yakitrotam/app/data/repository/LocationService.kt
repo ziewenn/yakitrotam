@@ -164,7 +164,7 @@ class LocationService(
      */
     suspend fun describePoint(lat: Double, lng: Double): CityLocation = withContext(Dispatchers.IO) {
         try {
-            val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=tr&zoom=16"
+            val url = "${Endpoints.nominatim}/reverse?lat=$lat&lon=$lng&format=json&accept-language=tr&zoom=16"
             val address = getJsonObject(url)?.optJSONObject("address")
             if (address != null) {
                 val local = address.firstNonBlank(
@@ -206,7 +206,7 @@ class LocationService(
             try {
                 val encoded = URLEncoder.encode(query, "UTF-8")
                 // Türkiye merkezine yakın sonuçlar öne alınır (bias), sınırlama değil.
-                val url = "https://photon.komoot.io/api/?q=$encoded&limit=12&lang=default&lat=39.0&lon=35.0"
+                val url = "${Endpoints.photon}/api/?q=$encoded&limit=12&lang=default&lat=39.0&lon=35.0"
                 val request = Request.Builder()
                     .url(url)
                     .header("User-Agent", USER_AGENT)

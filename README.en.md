@@ -76,6 +76,9 @@ without waiting for a store update. Only `https` addresses are accepted.
 - Brand preference (Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz,
   Türkiye Petrolleri, Alpet, Lukoil). Preference is a scoring criterion rather
   than a hard filter, so you are never stranded because your brand was absent.
+  The preferred brand is looked for across the whole reachable range: as long as
+  it does not add a stop to the trip, an earlier station on the road beats another
+  brand at the end of the range, or the same brand behind a detour.
 - Per stop: fuel remaining on arrival in percent and litres, litres to add,
   estimated cost, real extra distance and time (or "on the way").
 - Cost breakdown: fuel burned for the trip, total paid at the pump, cost per

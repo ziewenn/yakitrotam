@@ -76,6 +76,9 @@ Yalnızca `https` adresleri kabul edilir.
 - Marka tercihi (Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz,
   Türkiye Petrolleri, Alpet, Lukoil). Tercih katı bir filtre değil puanlama
   kriteridir; menzil içinde tercih edilen marka yoksa sürücü yolda bırakılmaz.
+  Tercih edilen marka menzilin tamamında aranır: yolculuğa durak eklemediği
+  sürece daha erkendeki yol üstü istasyon, menzil sonundaki başka markaya ya da
+  aynı markanın sapma gerektiren istasyonuna tercih edilir.
 - Durak başına: varışta kalan yakıt yüzdesi ve litresi, alınacak litre, tahmini
   tutar, yola eklediği gerçek mesafe ve süre (ya da "Yol üstü").
 - Yolculuğun yakıt maliyeti, pompada ödenecek toplam ve 100 km başına maliyet

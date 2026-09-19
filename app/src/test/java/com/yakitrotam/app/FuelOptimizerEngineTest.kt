@@ -373,4 +373,62 @@ class FuelOptimizerEngineTest {
 
         assertEquals(61, plan.estimatedDrivingTimeMinutes)
     }
+
+    // Rotadaki konumlar: gebze 40, izmit 87, hendek 153, duzce 185, bolu 215, gerede 279 km (toplam 388 km).
+
+    /** Düzce'ye (185. km) kadar menzili olan araç; seçim penceresi 140-185 km arasına düşer. */
+    private val midRangeCar = VehicleProfile(
+        consumptionPer100Km = 7.0,
+        tankCapacityLiters = 50.0,
+        currentLevelPercent = 42.0,
+        reserveThresholdPercent = 15.0
+    )
+
+    @Test
+    fun `tercih edilen marka menzil sonundaki pencerenin disinda olsa da secilir`() {
+        // Penceredeki iki istasyon (hendek_po, duzce_opet) Shell değil; yol üstündeki Shell 40. km'de.
+        val plan = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, midRangeCar, preferredBrands = setOf(FuelBrand.SHELL)
+        )
+
+        assertEquals("gebze_shell", plan.stops.first().station.id)
+        assertEquals("Erken durak yolculuğa durak eklememeli", 1, plan.stopsCount)
+    }
+
+    @Test
+    fun `tercih edilen marka icin erken durmak fazladan durak getiriyorsa menzil sonundaki istasyon secilir`() {
+        // 40 L depo, 10 L/100 km: Gebze'de (40. km) dolum varışa yetmez, ikinci durak gerekir;
+        // Düzce'de (185. km) dolum yeter. Marka tercihi fazladan bir durağa değmez.
+        val car = VehicleProfile(
+            consumptionPer100Km = 10.0,
+            tankCapacityLiters = 40.0,
+            currentLevelPercent = 65.0,
+            reserveThresholdPercent = 15.0
+        )
+        val plan = engineWith(corridorStations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, car, preferredBrands = setOf(FuelBrand.SHELL)
+        )
+
+        assertEquals(1, plan.stopsCount)
+        assertNotEquals("gebze_shell", plan.stops.first().station.id)
+    }
+
+    @Test
+    fun `yol ustundeki erken tercih edilen marka penceredeki sapmali olana tercih edilir`() {
+        val stations = listOf(
+            station("shell_yol_ustu", FuelBrand.SHELL, 40.801, 29.431),   // 40. km, pencere dışı
+            station("lukoil_yol_ustu", FuelBrand.LUKOIL, 40.781, 30.762), // 153. km, pencerede
+            station("shell_sapmali", FuelBrand.SHELL, 40.821, 31.141)     // 185. km, pencerede
+        )
+        val roads = fakeRoads(
+            mapOf("shell_yol_ustu" to 0.1, "lukoil_yol_ustu" to 0.1, "shell_sapmali" to 14.0), stations
+        )
+
+        val plan = engineWith(stations).calculateTripPlan(
+            istanbul, ankara, istanbulAnkaraRoute, midRangeCar,
+            preferredBrands = setOf(FuelBrand.SHELL), detourResolver = roads
+        )
+
+        assertEquals("shell_yol_ustu", plan.stops.first().station.id)
+    }
 }

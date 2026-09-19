@@ -70,6 +70,14 @@ class FuelOptimizerEngine(
             .filter { it.detourKm <= MAX_DETOUR_KM }
             .sortedBy { it.alongKm }
 
+        /** [km]'de depo doldurulursa varışa kadar en az kaç durak daha gerekir (tam depo etaplarıyla). */
+        fun stopsAfter(km: Double): Int {
+            val litersToFinish = (totalDistanceKm - km).toLiters(consumptionRate)
+            val lastLegLiters = tankCapacity - arrivalMinLiters
+            if (litersToFinish <= lastLegLiters) return 0
+            return kotlin.math.ceil((litersToFinish - lastLegLiters) / (tankCapacity - reserveLiters)).toInt()
+        }
+
         val stops = mutableListOf<FuelStop>()
         var alongKm = 0.0
         var fuelLiters = vehicleProfile.currentFuelLiters.coerceIn(0.0, tankCapacity)
@@ -123,7 +131,8 @@ class FuelOptimizerEngine(
                     totalDistanceKm = totalDistanceKm,
                     preferredBrands = preferredBrands,
                     fuelType = vehicleProfile.fuelType,
-                    detourResolver = resolver
+                    detourResolver = resolver,
+                    extraStopsIfStoppedAt = { km -> stopsAfter(km) - stopsAfter(farthestAlongKm) }
                 )
 
             val windowPool = reachable.filter { it.alongKm >= farthestAlongKm - windowKm }
@@ -139,6 +148,21 @@ class FuelOptimizerEngine(
                         it.alongKm >= fromKm + (farthestAlongKm - fromKm) * 0.5
                 }
                 if (widerPool.isNotEmpty()) evaluated = evaluated + evaluate(shortlist(widerPool, null))
+            }
+
+            // Marka tercihi yalnızca menzil sonundaki pencereyle sınırlı kalmasın: pencerede yol
+            // üstünde tercih edilen marka yoksa, menzilin geri kalanındaki tercih edilen marka
+            // istasyonlarına da bakılır. Yolculuğa durak eklemediği sürece 150 km önce yol
+            // üstündeki Shell, menzil sonundaki başka markadan ya da 14 km sapmalı Shell'den iyidir.
+            val bestSoFar = evaluated.minByOrNull { it.score }
+            val hasPreferredOnRoad = bestSoFar != null &&
+                bestSoFar.candidate.station.brand in preferredBrands && bestSoFar.extraKm <= WIDEN_IF_EXTRA_KM
+            if (preferredBrands.isNotEmpty() && !hasPreferredOnRoad) {
+                val evaluatedIds = evaluated.mapTo(HashSet()) { it.candidate.station.id }
+                val preferredPool = reachable.filter {
+                    it.station.brand in preferredBrands && it.station.id !in evaluatedIds
+                }
+                if (preferredPool.isNotEmpty()) evaluated = evaluated + evaluate(shortlist(preferredPool, null))
             }
 
             // Gerçek ek yol hesaba katılınca hiçbir aday menzile girmiyorsa kuş uçuşu tahmine dön;
@@ -257,7 +281,9 @@ class FuelOptimizerEngine(
         totalDistanceKm: Double,
         preferredBrands: Set<FuelBrand>,
         fuelType: FuelType,
-        detourResolver: DetourResolver?
+        detourResolver: DetourResolver?,
+        /** Bu km'de durmak, menzilin sonunda durmaya göre yolculuğa kaç durak ekler. */
+        extraStopsIfStoppedAt: (Double) -> Int
     ): List<Scored> {
         if (pool.isEmpty()) return emptyList()
 
@@ -288,9 +314,12 @@ class FuelOptimizerEngine(
             }
             val unknownFuelPenalty = if (candidate.station.confirmsFuel(fuelType)) 0.0 else 2.0
             val unnamedPenalty = if (candidate.station.brand == FuelBrand.DIGER) 3.0 else 0.0
+            // Erken durmanın gerçek bedeli yolculuğa fazladan durak eklemesidir; eklemiyorsa
+            // yalnızca hafif bir "mümkünse ileride dur" tercihi olarak sayılır.
             val score = extraKm * 1.5 +
                 (road?.extraMinutes ?: 0.0) * 0.5 +
-                (farthestAlongKm - candidate.alongKm) * 0.2 +
+                (farthestAlongKm - candidate.alongKm) * EARLY_STOP_WEIGHT +
+                extraStopsIfStoppedAt(candidate.alongKm).coerceAtLeast(0) * EXTRA_STOP_PENALTY +
                 brandPenalty + unknownFuelPenalty + unnamedPenalty
 
             Scored(candidate, extraKm, road?.extraMinutes, score)
@@ -334,6 +363,12 @@ class FuelOptimizerEngine(
 
         /** Son dolumda varış ihtiyacının üzerine bırakılan güvenlik payı. */
         const val FINAL_FILL_BUFFER = 1.15
+
+        /** Menzil sonundan her km erken durmanın puanı; durak sayısı değişmiyorsa hafif bir tercih. */
+        const val EARLY_STOP_WEIGHT = 0.05
+
+        /** Yolculuğa eklenen her fazladan durak (mola + zaman) ~27 km ek yola bedel sayılır. */
+        const val EXTRA_STOP_PENALTY = 40.0
 
         /** ~30 km ek yola bedel: tercih dışı markaya ancak gerçekten alternatif yoksa gidilir. */
         const val NON_PREFERRED_BRAND_PENALTY = 45.0

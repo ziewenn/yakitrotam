@@ -82,13 +82,13 @@ fun VehicleSheet(
     var showAdvanced by remember { mutableStateOf(false) }
 
     fun commitConsumption() {
-        val value = parseDecimal(consumptionText)?.coerceIn(2.0, 30.0) ?: vehicleProfile.consumptionPer100Km
+        val value = parseDecimal(consumptionText)?.coerceIn(2.0, 60.0) ?: vehicleProfile.consumptionPer100Km
         consumptionText = formatDecimal(value)
         if (value != vehicleProfile.consumptionPer100Km) onUpdateProfile(vehicleProfile.copy(consumptionPer100Km = value))
     }
 
     fun commitCapacity() {
-        val value = parseDecimal(capacityText)?.coerceIn(10.0, 150.0) ?: vehicleProfile.tankCapacityLiters
+        val value = parseDecimal(capacityText)?.coerceIn(10.0, 1500.0) ?: vehicleProfile.tankCapacityLiters
         capacityText = formatDecimal(value)
         if (value != vehicleProfile.tankCapacityLiters) onUpdateProfile(vehicleProfile.copy(tankCapacityLiters = value))
     }
@@ -382,6 +382,6 @@ private fun NumericField(
 }
 
 private fun isDecimalInput(value: String): Boolean =
-    value.length <= 6 && value.matches(Regex("^\\d{0,3}([.,]\\d{0,2})?$"))
+    value.length <= 7 && value.matches(Regex("^\\d{0,4}([.,]\\d{0,2})?$"))
 
 private fun parseDecimal(value: String): Double? = value.replace(',', '.').toDoubleOrNull()

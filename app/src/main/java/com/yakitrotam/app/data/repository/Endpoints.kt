@@ -28,9 +28,12 @@ object Endpoints {
         private set
     @Volatile var overpass: List<String> = listOf(
         "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+        "https://overpass.openstreetmap.fr/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
     )
+        private set
+    /** Tüm Türkiye istasyon listesi (tools/build_stations.py çıktısı). */
+    @Volatile var stations: String = "https://ziewenn.github.io/yakitrotam/stations.json"
         private set
     @Volatile var nominatim: String = "https://nominatim.openstreetmap.org"
         private set
@@ -72,6 +75,7 @@ object Endpoints {
         config["nominatim"].url()?.let { nominatim = it }
         config["photon"].url()?.let { photon = it }
         config["mapStyle"].url()?.let { mapStyle = it }
+        config["stations"].url()?.let { stations = it }
         runCatching { config["overpass"]?.jsonArray?.mapNotNull { it.url() } }.getOrNull()
             ?.takeIf { it.isNotEmpty() }
             ?.let { overpass = it }

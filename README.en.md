@@ -41,7 +41,7 @@ The app needs no API keys. Every service it talks to is free and keyless.
 
 | Data | Source |
 | --- | --- |
-| Fuel stations | OpenStreetMap Overpass API (ODbL) |
+| Fuel stations | OpenStreetMap (ODbL): prebuilt Turkey list, Overpass API as fallback |
 | Petrol and diesel prices | Opet price service (all provinces in one request) |
 | Autogas (LPG) price | Petrol Ofisi price page |
 | Driving route | OSRM |
@@ -54,8 +54,13 @@ Google Places and the Maps SDK are billed per call, so they are not used. Google
 Maps is only invoked through an Android intent to open the finished route, which
 costs nothing.
 
-Station data is not bundled with the app; it is fetched fresh for every route.
-That is what keeps stops from landing on locations where no station exists.
+Station data is not bundled with the app. The public Overpass servers are often
+busy or down, so the app does not query them for every route; it downloads the list
+of all stations in Turkey (built from OSM by `tools/build_stations.py`, about 15,000
+entries) from `ziewenn.github.io/yakitrotam/stations.json`, caches it for three days
+and filters the route corridor on the device. If the list is unreachable it falls
+back to a live Overpass query. To refresh the list, run the script and push its
+output to the site repository.
 
 Opet publishes petrol and diesel but not LPG, so the autogas price is read from
 the table on Petrol Ofisi's price page. If the page is unreachable or its layout
@@ -89,6 +94,7 @@ without waiting for a store update. Only `https` addresses are accepted.
 - Pick a location on the map for places without an address.
 - Share the plan as plain text (WhatsApp, SMS, email).
 - All stops are passed to Google Maps as waypoints.
+- After a few plans the app requests Google Play's in-app review prompt.
 - Optional price alerts: a notification when the price of your fuel type changes
   in your origin province. The comparison runs on the device every 6 hours via
   WorkManager; there is no server.

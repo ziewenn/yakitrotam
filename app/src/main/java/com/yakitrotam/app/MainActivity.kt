@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.yakitrotam.app.ads.Ads
 import com.yakitrotam.app.data.repository.GasStationRepository
 import com.yakitrotam.app.data.repository.LocationService
+import com.yakitrotam.app.data.repository.OverpassStationSource
 import com.yakitrotam.app.data.repository.FuelPriceRepository
 import com.yakitrotam.app.data.repository.RouteRepository
 import com.yakitrotam.app.data.repository.Endpoints
@@ -28,6 +29,8 @@ import com.yakitrotam.app.ui.screens.TripPlannerScreen
 import com.yakitrotam.app.ui.theme.DarkBackground
 import com.yakitrotam.app.ui.theme.YakitRotamTheme
 import com.yakitrotam.app.ui.viewmodel.TripViewModel
+import com.yakitrotam.app.util.ReviewPrompt
+import java.io.File
 
 class MainActivity : ComponentActivity() {
 
@@ -35,7 +38,9 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val stationRepo = GasStationRepository()
+                val stationRepo = GasStationRepository(
+                    OverpassStationSource(datasetCache = File(cacheDir, "stations.json"))
+                )
                 val routeRepo = RouteRepository()
                 val optimizer = FuelOptimizerEngine(stationRepo)
                 val locationService = LocationService(routeRepo, applicationContext)
@@ -45,7 +50,8 @@ class MainActivity : ComponentActivity() {
                     optimizerEngine = optimizer,
                     locationService = locationService,
                     fuelPriceRepository = FuelPriceRepository(),
-                    preferences = TripPreferences(applicationContext)
+                    preferences = TripPreferences(applicationContext),
+                    onPlanReady = { ReviewPrompt.recordPlan(applicationContext) }
                 ) as T
             }
         }
@@ -61,6 +67,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Endpoints.init(this)
         Ads.initialize(this)
+        // Planı Haritalar'da açıp uygulamaya geri dönmeyen kullanıcıya sonraki açılışta sorulur.
+        if (savedInstanceState == null) ReviewPrompt.askIfDue(this)
 
         setContent {
             YakitRotamTheme {
@@ -71,12 +79,15 @@ class MainActivity : ComponentActivity() {
                     val uiState by viewModel.uiState.collectAsState()
 
                     if (uiState.tripResult != null) {
-                        BackHandler {
+                        // Plana bakıp geri dönen kullanıcı bir işin ortasında değildir; puan istemek için uygun an.
+                        val closeSummary = {
                             viewModel.clearResult()
+                            ReviewPrompt.askIfDue(this@MainActivity)
                         }
+                        BackHandler(onBack = closeSummary)
                         RouteSummaryScreen(
                             tripResult = uiState.tripResult!!,
-                            onBackToPlanner = { viewModel.clearResult() },
+                            onBackToPlanner = closeSummary,
                             onSelectAlternative = { index, id -> viewModel.selectAlternative(index, id) }
                         )
                     } else {

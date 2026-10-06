@@ -41,7 +41,7 @@ anahtarsızdır.
 
 | Veri | Kaynak |
 | --- | --- |
-| Akaryakıt istasyonları | OpenStreetMap Overpass API (ODbL) |
+| Akaryakıt istasyonları | OpenStreetMap (ODbL): hazır Türkiye listesi, yedek olarak Overpass API |
 | Benzin ve motorin fiyatı | Opet fiyat servisi (tüm iller tek istekte) |
 | Otogaz fiyatı | Petrol Ofisi fiyat sayfası |
 | Sürüş rotası | OSRM |
@@ -54,8 +54,13 @@ Google Places ve Maps SDK çağrı başına ücretlendirildiği için kullanılm
 Google Maps yalnızca hazır rotayı açmak üzere Android intent'i ile çağrılıyor,
 bu ücretsizdir.
 
-İstasyon verisi uygulamaya gömülü değildir, her rota için yeniden çekilir.
-Böylece gerçekte var olmayan bir konuma durak konmaz.
+İstasyon verisi uygulamaya gömülü değildir. Herkese açık Overpass sunucuları sık
+sık meşgul ya da kapalı olduğu için uygulama her rotada onlara gitmez; Türkiye'deki
+tüm istasyonların listesini (`tools/build_stations.py` ile OSM'den üretilir, yaklaşık
+15 bin kayıt) `ziewenn.github.io/yakitrotam/stations.json` adresinden indirir, üç gün
+önbellekte tutar ve rota koridoruna düşenleri cihazda süzer. Listeye ulaşılamazsa
+canlı Overpass sorgusuna düşülür. Listeyi yenilemek için betiği çalıştırıp çıktıyı
+site deposuna göndermek yeterlidir.
 
 Opet servisi benzin ve motorini yayınlıyor, otogaz yayınlamıyor. Otogaz fiyatı
 bu yüzden Petrol Ofisi'nin fiyat sayfasındaki tablodan okunuyor. Sayfaya
@@ -89,6 +94,7 @@ Yalnızca `https` adresleri kabul edilir.
 - Adresi olmayan noktalar için haritadan konum seçme.
 - Planı düz metin olarak paylaşma (WhatsApp, SMS, e-posta).
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
+- Birkaç plandan sonra Google Play'in uygulama içi puanlama penceresi istenir.
 - İsteğe bağlı fiyat bildirimi: seçili yakıt türünün kalkış ilindeki fiyatı
   değişince haber verir. Karşılaştırma cihazda, WorkManager ile 6 saatte bir
   yapılır; sunucu yoktur.

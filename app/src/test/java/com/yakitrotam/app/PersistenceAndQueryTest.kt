@@ -73,4 +73,21 @@ class PersistenceAndQueryTest {
         assertTrue(query.startsWith("[out:json]"))
         assertTrue(query.trimEnd().endsWith("out center tags;"))
     }
+
+    @Test
+    fun `hazir listeden yalnizca rota koridorundaki istasyonlar alinir`() {
+        val route = listOf(LatLng(40.99, 29.02), LatLng(40.80, 29.43), LatLng(40.77, 29.98))
+        fun station(id: String, lat: Double, lng: Double) =
+            com.yakitrotam.app.data.model.GasStation(id, id, com.yakitrotam.app.data.model.FuelBrand.DIGER, lat, lng)
+        val all = listOf(
+            station("yol_ustu", 40.80, 29.43),
+            station("yola_2km", 40.785, 29.70),
+            station("ankara", 39.92, 32.85),
+            station("izmir", 38.42, 27.14)
+        )
+
+        val nearby = OverpassStationSource.stationsInCorridor(all, route).map { it.id }
+
+        assertEquals(listOf("yol_ustu", "yola_2km"), nearby)
+    }
 }

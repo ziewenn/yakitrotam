@@ -49,7 +49,9 @@ class TripViewModel(
     private val optimizerEngine: FuelOptimizerEngine = FuelOptimizerEngine(stationRepository),
     private val locationService: LocationService = LocationService(routeRepository),
     private val fuelPriceRepository: FuelPriceRepository = FuelPriceRepository(),
-    private val preferences: TripPreferences? = null
+    private val preferences: TripPreferences? = null,
+    /** Sorunsuz bir plan çıkarıldığında çağrılır (puanlama istemi sayacı için). */
+    private val onPlanReady: () -> Unit = {}
 ) : ViewModel() {
 
     val popularCities: List<CityLocation> = routeRepository.popularCities
@@ -303,6 +305,7 @@ class TripViewModel(
                         errorMessage = null
                     )
                 }
+                if (result.warning == null) onPlanReady()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

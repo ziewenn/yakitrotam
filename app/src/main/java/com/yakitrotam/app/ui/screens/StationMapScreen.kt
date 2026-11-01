@@ -114,6 +114,7 @@ fun StationMapScreen(
     var focusZoom by remember { mutableStateOf(11.0) }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var locating by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<LatLng?>(null) }
 
     LaunchedEffect(electric) {
         all = null
@@ -128,6 +129,7 @@ fun StationMapScreen(
         scope.launch {
             locating = true
             locate()?.let {
+                myLocation = it
                 focus = it
                 focusZoom = 12.0
             }
@@ -223,7 +225,8 @@ fun StationMapScreen(
                     failed -> StatusPill("İstasyon listesi alınamadı. İnternet bağlantını kontrol et.")
                     selected != null -> SelectedStationCard(
                         station = selected,
-                        distanceKm = GeoUtils.distanceKm(center, selected.location),
+                        // Seçilince harita istasyona ortalanır; mesafe sürücünün konumundan ölçülür.
+                        distanceKm = GeoUtils.distanceKm(myLocation ?: center, selected.location),
                         isFavorite = selected.id in favoriteIds,
                         onToggleFavorite = { onToggleFavorite(selected.id) },
                         onClose = { selectedId = null },

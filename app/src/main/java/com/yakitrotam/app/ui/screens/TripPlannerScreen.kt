@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.Star
@@ -475,7 +476,10 @@ private fun SavedRoutesRow(
 ) {
     val context = LocalContext.current
     val alreadySaved = routes.any { it.label == currentLabel }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Yeni kaydedilen rota başa eklenir; şerit kaymış kalmasın.
+    val listState = rememberLazyListState()
+    LaunchedEffect(routes.size) { listState.scrollToItem(0) }
+    LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(routes, key = { it.label }) { route ->
             Row(
                 modifier = Modifier

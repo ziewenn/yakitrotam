@@ -4,7 +4,7 @@ Kullanım:
     python store/make_store_assets.py <ham_goruntu_klasoru>
 
 Ham klasörde şu dosyalar beklenir (1344x2992, reklamsız build: ./gradlew installDebug -PnoAds):
-    planner.png, summary.png, ev.png, vehicle.png
+    planner.png, summary.png, cost.png, ev.png, map.png, defter.png, widget.png, vehicle.png
 Çıktılar bu betiğin bulunduğu klasöre yazılır.
 """
 import sys
@@ -41,9 +41,10 @@ def rounded(img, radius):
     return out
 
 
-def phone(name):
+def phone(name, top=150):
+    """Durum ve gezinme çubukları kırpılır; top büyütülürse ekranın alt kısmı gösterilir."""
     img = Image.open(RAW / f"{name}.png").convert("RGB")
-    return img.crop((0, 150, img.width, img.height - 70))  # durum ve gezinme çubukları
+    return img.crop((0, top, img.width, img.height - 70))
 
 
 def fade(width, height, power):
@@ -54,7 +55,7 @@ def fade(width, height, power):
     return layer
 
 
-def screenshot(raw, title, subtitle, name):
+def screenshot(raw, title, subtitle, name, top=150, bottom=None, shot_width=800):
     width, height = 1080, 1920
     canvas = Image.new("RGBA", (width, height), BG + (255,))
     canvas.alpha_composite(glow((width, height), (width // 2, 180), 420, 34))
@@ -67,18 +68,27 @@ def screenshot(raw, title, subtitle, name):
         (subtitle, font("segoeui.ttf", 38), MUTED, 222),
     ):
         draw.text(((width - draw.textlength(text, font=fnt)) / 2, y), text, font=fnt, fill=fill)
-    shot = phone(raw)
-    shot_width = 860
+    shot = phone(raw, top)
+    # Telefon kartı tuvalin içinde biter; alt köşeler görünür, düğmeler soluklaştırılmaz.
+    fit = int((height - 330 - 50) * shot.width / shot_width)
+    shot = shot.crop((0, 0, shot.width, min(shot.height, fit, (bottom - top) if bottom else fit)))
     shot = rounded(shot.resize((shot_width, int(shot.height * shot_width / shot.width)), Image.LANCZOS), 56)
     canvas.alpha_composite(shot, ((width - shot_width) // 2, 330))
-    canvas.alpha_composite(fade(width, 260, 1.6), (0, height - 260))
     canvas.convert("RGB").save(OUT / f"{name}.png")
 
 
-screenshot("planner", "Rotanı gir, deponu söyle", "Göstergeyi aracındaki gibi ayarla, gerisini bırak", "screenshot-1")
-screenshot("summary", "Yolculuğun maliyeti hazır", "Mesafe, süre ve ödeyeceğin tutar tek bakışta", "screenshot-2")
-screenshot("ev", "Elektrikli araçla şarj planı", "Her durakta varış ve çıkış şarjı, süre ve tutar", "screenshot-3")
-screenshot("vehicle", "Aracını bir kez tanıt", "68 elektrikli model hazır; yakıtlı araç da kayıtlı kalır", "screenshot-4")
+SHOTS = [
+    ("planner", "Rotanı gir, deponu söyle", "Sık gittiğin rotalar tek dokunuşta", 150, 2665),
+    ("summary", "Planın hazır: nerede, ne kadar", "Mesafe, süre ve duraklarda ödeyeceğin tutar", 150, 2580),
+    ("cost", "Köprü ve otoyol ücreti de hesaplanır", "Osmangazi, 1915 Çanakkale, Avrasya ve otoyollar", 1000),
+    ("ev", "Elektrikli araçla şarj planı", "Üye olduğun şarj ağı öne alınır", 150, 2635),
+    ("map", "Yakındaki istasyonlar haritada", "Akaryakıt ve hızlı şarj; favorilerin yıldızlı", 150, 2680),
+    ("defter", "Gerçek tüketimini öğren", "Dolumları gir, planlar senin aracına göre olsun", 150, 2665),
+    ("widget", "Pompa fiyatları ana ekranında", "Benzin, motorin ve otogaz bir bakışta", 150, 2380),
+    ("vehicle", "Aracını bir kez tanıt", "68 elektrikli model hazır; yakıtlı araç da kayıtlı kalır", 150),
+]
+for index, (raw, title, subtitle, *crop) in enumerate(SHOTS, start=1):
+    screenshot(raw, title, subtitle, f"screenshot-{index}", *crop)
 
 # Öne çıkan görsel (1024x500)
 width, height = 1024, 500
@@ -91,7 +101,7 @@ ImageDraw.Draw(icon_mask).rounded_rectangle((0, 0, 111, 111), 28, fill=255)
 feature.paste(icon, (64, 110), icon_mask)
 draw.text((64, 240), "YakıtRotam", font=font("segoeuib.ttf", 66), fill=WHITE)
 draw.text((66, 330), "Yol boyunca doğru yerde,", font=font("seguisb.ttf", 32), fill=MUTED)
-draw.text((66, 372), "doğru kadar yakıt ve şarj.", font=font("seguisb.ttf", 32), fill=LIME)
+draw.text((66, 372), "yetecek kadar yakıt ve şarj.", font=font("seguisb.ttf", 32), fill=LIME)
 shot = phone("summary").crop((0, 0, 1344, 1500))
 shot_width = 400
 shot = rounded(shot.resize((shot_width, int(shot.height * shot_width / shot.width)), Image.LANCZOS), 36)

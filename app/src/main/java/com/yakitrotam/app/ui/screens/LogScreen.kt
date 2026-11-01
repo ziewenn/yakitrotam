@@ -113,7 +113,7 @@ fun LogScreen(
                             color = TextPrimary
                         )
                         Text(
-                            "${formatDecimal(stats.measuredKm)} km yoldan ölçüldü · araçta " +
+                            "${formatKm(stats.measuredKm)} yoldan ölçüldü · araçta " +
                                 "${formatDecimal(vehicleProfile.consumptionPer100Km)} $unit/100 km kayıtlı",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextMuted
@@ -167,6 +167,9 @@ fun LogScreen(
     }
 }
 
+/** 11.180 km */
+private fun formatKm(km: Double) = String.format(Locale.forLanguageTag("tr"), "%,.0f km", km)
+
 private val dateFormat = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("tr"))
 
 @Composable
@@ -182,7 +185,7 @@ private fun EntryRow(entry: LogEntry, unit: String, onDelete: () -> Unit) {
                 Text(
                     listOfNotNull(
                         dateFormat.format(Date(entry.dateMillis)),
-                        "${formatDecimal(entry.odometerKm)} km",
+                        formatKm(entry.odometerKm),
                         "${formatPrice(entry.unitPriceTL)}/$unit",
                         if (entry.fullFill) null else "kısmi"
                     ).joinToString(" · "),
@@ -226,8 +229,8 @@ private fun AddEntryDialog(
                     onValueChange = { odometer = it.take(9) },
                     label = { Text("Kilometre sayacı") },
                     supportingText = when {
-                        kmError -> { { Text("Son kayıttan (${formatDecimal(lastOdometer!!)} km) büyük olmalı") } }
-                        lastOdometer != null -> { { Text("Son kayıt: ${formatDecimal(lastOdometer)} km") } }
+                        kmError -> { { Text("Son kayıttan (${formatKm(lastOdometer!!)}) büyük olmalı") } }
+                        lastOdometer != null -> { { Text("Son kayıt: ${formatKm(lastOdometer)}") } }
                         else -> null
                     },
                     isError = kmError,

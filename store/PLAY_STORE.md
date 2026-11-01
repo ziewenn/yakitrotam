@@ -6,7 +6,7 @@ Bu klasördeki dosyalar ve Play Console'da doldurulacak alanlar.
 | --- | --- |
 | `icon-512.png` | Ana mağaza girişi > Uygulama simgesi |
 | `feature-graphic-1024x500.png` | Ana mağaza girişi > Öne çıkan grafik |
-| `screenshot-1.png` ... `screenshot-4.png` | Ana mağaza girişi > Telefon ekran görüntüleri |
+| `screenshot-1.png` ... `screenshot-8.png` | Ana mağaza girişi > Telefon ekran görüntüleri |
 
 Görsellerde reklam yok; ekran görüntüleri `./gradlew installDebug -PnoAds` ile
 alınmış reklamsız build'den üretildi. Arayüz değişince ham görüntüleri yeniden
@@ -155,14 +155,20 @@ Yolculuk özeti:
 - Toplam mesafe ve tahmini süre
 - Pompada ödeyeceğin toplam tutar
 - Yolculuk boyunca yakılan yakıt ve 100 km başına maliyet
+- Köprü, tünel ve otoyol geçiş ücreti tahmini (KGM tarifeleri, otomobil)
 
 Elektrikli araçlar için:
 - 68 hazır model ya da elle batarya, tüketim ve şarj gücü
 - Türkiye'deki halka açık DC hızlı şarj istasyonları, EPDK kayıtlarından
 - Her durakta varış ve çıkış şarj yüzdesi, şarj süresi, kW, eklenecek kWh ve operatörün liste fiyatıyla tutar
 - Yalnızca gereken kadar şarj; aracının soketine uymayan istasyon önerilmez
+- Üyeliğin olan şarj ağlarını (Trugo, ZES, Eşarj...) seç; plan önce onların istasyonlarında durur
 
-Harita: yakınındaki akaryakıt ve şarj istasyonlarını gör, birine dokunup yol tarifi al ya da oraya rota planla.
+Harita: yakınındaki akaryakıt ve şarj istasyonlarını gör, sık kullandıklarını favorilere ekle, birine dokunup yol tarifi al ya da oraya rota planla.
+
+Defter: dolum ve şarjlarını kaydet; iki tam dolum arasından aracının gerçek tüketimini ve 100 km maliyetini gör, tek dokunuşla planlara uygula.
+
+Ana ekran widget'ı: bulunduğun ilin benzin, motorin ve otogaz fiyatı bir bakışta.
 
 Neden YakıtRotam?
 - İstasyonlar OpenStreetMap'teki gerçek kayıtlardan her rota için yeniden alınır.
@@ -171,7 +177,7 @@ Neden YakıtRotam?
 - Bir istasyona ancak mevcut yakıtınla gerçekten ulaşabiliyorsan durak olarak önerilir.
 - Son durakta depoyu gereksiz yere doldurtmaz; varışa yetecek kadar yakıt alman önerilir. Varışta depoda ne kadar kalsın, sen seçersin.
 - Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz, TP, Alpet ve Lukoil arasından tercih ettiğin markalar öne alınır.
-- Araç bilgilerin ve son aradığın yerler hatırlanır, her seferinde yeniden girmezsin.
+- Araç bilgilerin, son aradığın yerler ve kayıtlı rotaların hatırlanır; sık gittiğin yolu tek dokunuşla planlarsın.
 - Plan hazır olunca tek dokunuşla tüm duraklarıyla Google Haritalar'da açılır.
 
 Hesap açman gerekmez. Değerler tahmindir; sürüş tarzı ve trafik sonucu değiştirebilir.
@@ -181,7 +187,7 @@ Harita ve akaryakıt istasyonu verileri © OpenStreetMap katkıcıları. Şarj i
 
 - Uygulama simgesi: `icon-512.png`
 - Öne çıkan grafik: `feature-graphic-1024x500.png`
-- Telefon ekran görüntüleri: `screenshot-1.png` ... `screenshot-4.png`
+- Telefon ekran görüntüleri: `screenshot-1.png` ... `screenshot-8.png`
 
 ## Adım 7. Kapalı test (yeni kişisel hesaplar için zorunlu)
 

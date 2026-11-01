@@ -66,123 +66,71 @@ yüklenecek paket.
 
 **Tüm uygulamalar > Uygulama oluştur**:
 
-- Uygulama adı: `YakıtRotam: Yakıt Planlayıcı`
-- Varsayılan dil: Türkçe
-- Uygulama mı oyun mu: Uygulama
-- Ücretsiz mi ücretli mi: Ücretsiz
-- Beyanları işaretle.
-
-## Adım 5. "Uygulamanızı ayarlayın" görevleri
-
-Kontrol panelindeki listeyi sırayla doldur.
-
-### Gizlilik politikası
-`https://ziewenn.github.io/yakitrotam/privacy/`
-
-### Uygulama erişimi
-"Tüm işlevler özel erişim gerektirmeden kullanılabilir".
-
-### Reklamlar
-"Evet, uygulamamda reklam var".
-
-### İçerik derecelendirmesi
-E-posta gir, kategori **Yardımcı Program, Üretkenlik, İletişim veya Diğer**. Tüm
-sorulara (şiddet, cinsellik, küfür, madde, hakaret, kullanıcı etkileşimi, konum
-paylaşımı başka kullanıcılarla, dijital satın alma, hazır oyun) **Hayır**. Sonuç
-herkese uygun (PEGI 3 / 3+) çıkmalı.
-
-### Hedef kitle
-Yaş grubu olarak yalnızca **18 ve üzeri** seç (araç kullanan kitle). "Uygulama
-çocuklara hitap ediyor mu" sorusuna **Hayır**.
-
-### Haber uygulaması / COVID / Devlet uygulaması / Finansal özellikler / Sağlık
-Hepsine **Hayır** veya "bu özelliklerin hiçbiri yok".
-
-### Veri güvenliği (Data safety)
-
-Genel sorular:
-
-- Uygulama gerekli kullanıcı veri türlerini topluyor veya paylaşıyor mu? **Evet**
-- Toplanan tüm veriler aktarım sırasında şifreleniyor mu? **Evet**
-- Kullanıcıların verilerinin silinmesini isteyebileceği bir yol sağlıyor musunuz?
-  **Hayır** (hesap yok; cihazdaki veriler uygulama kaldırılınca silinir)
-
-Veri türleri:
-
-| Veri türü | Toplanıyor | Paylaşılıyor | Geçici işleniyor | Zorunlu mu | Amaç |
-| --- | --- | --- | --- | --- | --- |
-| Konum > Yaklaşık konum | Evet | Evet | Hayır | Zorunlu | Uygulama işlevleri, Reklam veya pazarlama, Analiz |
-| Konum > Kesin konum | Evet | Hayır | Evet | İsteğe bağlı | Uygulama işlevleri |
-| Uygulama etkinliği > Uygulama etkileşimleri | Evet | Evet | Hayır | Zorunlu | Reklam veya pazarlama, Analiz |
-| Uygulama bilgileri ve performansı > Kilitlenme günlükleri | Evet | Evet | Hayır | Zorunlu | Analiz |
-| Uygulama bilgileri ve performansı > Teşhis | Evet | Evet | Hayır | Zorunlu | Analiz |
-| Cihaz veya diğer kimlikler | Evet | Evet | Hayır | Zorunlu | Reklam veya pazarlama, Analiz, Sahtekarlığı önleme |
-
-Açıklama: "Yaklaşık konum", "Uygulama etkinliği", "Uygulama bilgileri" ve "Cihaz
-kimlikleri" satırları Google AdMob SDK'sının topladıklarıdır. "Kesin konum" yalnızca
-kullanıcı "Konumum"a basınca kalkış noktası için kullanılır ve saklanmaz.
-
-Google'ın güncel AdMob beyan listesiyle son kez karşılaştır:
-https://developers.google.com/admob/android/privacy/play-data-disclosure
-
-### Uygulama kategorisi ve iletişim bilgileri
-- Kategori: **Harita ve Navigasyon**
-- E-posta: Play'in göstereceği destek e-postası (zorunlu)
-- Web sitesi: `https://ziewenn.github.io` (app-ads.txt doğrulaması bu alana bakar)
-
-## Adım 6. Ana mağaza girişi
-
-- Uygulama adı: `YakıtRotam: Yakıt ve Şarj Planı`
-- Kısa açıklama (78/80):
+- Uygulama adı (en fazla 30): `YakıtRotam: Yakıt & Şarj Planı`
+- Kısa açıklama (75/80):
 
 ```
-Yakıtlı ya da elektrikli araçla rotanda nerede, ne kadar dolum yapacağını gör.
+Yakıt ve şarj durağını, köprü-otoyol ücretini ve yol masrafını önceden gör.
 ```
 
-- Tam açıklama:
+- Tam açıklama (2308/4000):
 
 ```
-YakıtRotam, benzinli, dizel, LPG'li ve elektrikli araçlar için yol boyunca yakıt ve şarj molası planlar.
+YakıtRotam, benzinli, dizel, LPG'li ve elektrikli araçlar için yola çıkmadan önce yakıt ve şarj molalarını planlar. Nerede duracağını, ne kadar alacağını ve yolculuğun sana kaça mal olacağını önceden görürsün.
 
-Kalkış ve varış noktanı seç, deponun hacmini, ortalama tüketimini ve şu anki doluluğunu gir. Uygulama rotanı çizer, güzergah üzerindeki akaryakıt istasyonlarını bulur ve rezerve düşmeden nerede durman gerektiğini hesaplar.
+ELEKTRİKLİ ARAÇLAR İÇİN
+- Togg dahil 20 markadan 68 hazır model; istersen batarya, tüketim ve şarj gücünü kendin gir
+- Türkiye'deki halka açık DC hızlı şarj istasyonları, EPDK kayıtlarından her gün güncellenir
+- Her durakta varış ve çıkış şarj yüzdesi, şarj süresi, istasyon gücü, eklenecek kWh ve tutar
+- Aracının şarj eğrisi hesaba katılır; şarjın yavaşladığı yüzdelerde seni gereksiz bekletmez
+- Üyeliğin olan şarj ağlarını seç; plan önce onların istasyonlarında durur
+- Aracının soketine (CCS2 ya da CHAdeMO) uymayan istasyon önerilmez
 
-Her durak için:
-- İstasyona vardığında depoda kalan yakıt
-- Alman gereken litre ve tahmini tutar
-- Yola eklediği gerçek mesafe ve süre; otoyoldan çıkartıp dolaştıran istasyonlar elenir
+YAKITLI ARAÇLAR İÇİN
+- Depo göstergesini aracındaki gibi ayarla; rezerve düşmeden nerede durman gerektiğini gör
+- Her durakta alınacak litre, tahmini tutar ve varışta depoda kalan yakıt
+- Benzin, motorin ve LPG fiyatları il bazında güncel; her durak kendi ilinin fiyatıyla hesaplanır
+- Tercih ettiğin akaryakıt markaları öne alınır; menzilde yoksa yolda kalmaman için başkası önerilir
+- Otoyoldan çıkıp dolaştıran istasyonlar elenir; her durağın yola eklediği gerçek mesafe ve süre gösterilir
 
-Yolculuk özeti:
-- Toplam mesafe ve tahmini süre
-- Pompada ödeyeceğin toplam tutar
-- Yolculuk boyunca yakılan yakıt ve 100 km başına maliyet
+YOLCULUĞUN GERÇEK MALİYETİ
+- Toplam mesafe, süre ve duraklarda ödeyeceğin tutar
 - Köprü, tünel ve otoyol geçiş ücreti tahmini (KGM tarifeleri, otomobil)
+- 100 km başına maliyet
 
-Elektrikli araçlar için:
-- 68 hazır model ya da elle batarya, tüketim ve şarj gücü
-- Türkiye'deki halka açık DC hızlı şarj istasyonları, EPDK kayıtlarından
-- Her durakta varış ve çıkış şarj yüzdesi, şarj süresi, kW, eklenecek kWh ve operatörün liste fiyatıyla tutar
-- Yalnızca gereken kadar şarj; aracının soketine uymayan istasyon önerilmez
-- Üyeliğin olan şarj ağlarını (Trugo, ZES, Eşarj...) seç; plan önce onların istasyonlarında durur
+HARİTA VE KAYITLI ROTALAR
+- Yakınındaki akaryakıt ve hızlı şarj istasyonları, 150 kW üstü süzgeciyle
+- Sık uğradığın istasyonları favorilere ekle
+- Sık gittiğin rotaları kaydet, tek dokunuşla planla
+- Plan hazır olunca tüm duraklarıyla Google Haritalar'da aç
 
-Harita: yakınındaki akaryakıt ve şarj istasyonlarını gör, sık kullandıklarını favorilere ekle, birine dokunup yol tarifi al ya da oraya rota planla.
+YAKIT VE ŞARJ DEFTERİ
+- Dolum ve şarjlarını kaydet; aracının gerçek tüketimini ve 100 km maliyetini öğren
+- Ölçülen tüketimi tek dokunuşla planlarda kullan
 
-Defter: dolum ve şarjlarını kaydet; iki tam dolum arasından aracının gerçek tüketimini ve 100 km maliyetini gör, tek dokunuşla planlara uygula.
+FİYAT TAKİBİ
+- Ana ekran widget'ı: ilinin benzin, motorin ve otogaz fiyatı bir bakışta
+- İstersen yakıt fiyatı değişince bildirim al
 
-Ana ekran widget'ı: bulunduğun ilin benzin, motorin ve otogaz fiyatı bir bakışta.
+Hesap açman gerekmez; araç bilgilerin, rotaların ve defterin yalnızca telefonunda tutulur. Değerler tahmindir; sürüş tarzı, hava ve trafik sonucu değiştirebilir.
 
-Neden YakıtRotam?
-- İstasyonlar OpenStreetMap'teki gerçek kayıtlardan her rota için yeniden alınır.
-- Benzin, motorin ve LPG fiyatları il bazında günceldir; her durak kendi ilinin fiyatıyla hesaplanır.
-- İstersen yakıt fiyatı değişince bildirim alırsın.
-- Bir istasyona ancak mevcut yakıtınla gerçekten ulaşabiliyorsan durak olarak önerilir.
-- Son durakta depoyu gereksiz yere doldurtmaz; varışa yetecek kadar yakıt alman önerilir. Varışta depoda ne kadar kalsın, sen seçersin.
-- Shell, Opet, Petrol Ofisi, BP, TotalEnergies, Aytemiz, TP, Alpet ve Lukoil arasından tercih ettiğin markalar öne alınır.
-- Araç bilgilerin, son aradığın yerler ve kayıtlı rotaların hatırlanır; sık gittiğin yolu tek dokunuşla planlarsın.
-- Plan hazır olunca tek dokunuşla tüm duraklarıyla Google Haritalar'da açılır.
+Harita ve akaryakıt istasyonu verileri © OpenStreetMap katkıcıları. Şarj istasyonları: EPDK. Akaryakıt fiyatları: Opet ve Petrol Ofisi. Araç verileri: Open EV Data (MIT).
+```
 
-Hesap açman gerekmez. Değerler tahmindir; sürüş tarzı ve trafik sonucu değiştirebilir.
+- Sürüm notları (tr-TR, 406/500):
 
-Harita ve akaryakıt istasyonu verileri © OpenStreetMap katkıcıları. Şarj istasyonları: EPDK. Araç verileri: Open EV Data (MIT).
+```
+<tr-TR>
+Yenilikler:
+- Elektrikli araç desteği: 68 hazır model, EPDK'daki DC hızlı şarj istasyonları, şarj süresi ve tutarıyla durak planı
+- Şarj ağı tercihi: üyeliğin olan ağ öne alınır
+- Köprü ve otoyol ücreti tahmini
+- Harita: yakındaki istasyonlar ve favoriler
+- Kayıtlı rotalar
+- Yakıt ve şarj defteri: gerçek tüketimini öğren
+- Ana ekran fiyat widget'ı
+- Açık renkli yeni tasarım ve daha küçük uygulama boyutu
+</tr-TR>
 ```
 
 - Uygulama simgesi: `icon-512.png`

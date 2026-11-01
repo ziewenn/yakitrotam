@@ -34,7 +34,8 @@ class EvChargePlannerTest {
         totalKm: Int,
         stations: List<GasStation>,
         forced: Map<Int, String> = emptyMap(),
-        routeMinutes: Double? = null
+        routeMinutes: Double? = null,
+        operators: Set<String> = emptySet()
     ): TripPlanResult {
         val end = at(totalKm.toDouble())
         return EvChargePlanner(GasStationRepository(initialStations = stations)).calculateTripPlan(
@@ -43,7 +44,8 @@ class EvChargePlannerTest {
             routePoints = route(totalKm),
             vehicleProfile = car,
             forcedStationIds = forced,
-            routeDurationMinutes = routeMinutes
+            routeDurationMinutes = routeMinutes,
+            preferredOperators = operators
         )
     }
 
@@ -333,5 +335,18 @@ class EvChargePlannerTest {
 
         assertEquals("km250", result.stops.single().station.id)
         assertEquals(0.5, result.stops.single().detourMinutes!!, 1e-9)
+    }
+
+    @Test
+    fun `sarj agi tercihi ayni bolgedeki uye istasyonu one alir ama yolda birakmaz`() {
+        val stations = listOf(
+            charger(200, ccs = 180.0).copy(operatorName = "ZES"),
+            charger(185, ccs = 120.0).copy(operatorName = "Trugo")
+        )
+        assertEquals(listOf("km200"), plan(carA(80.0), 400, stations).stops.map { it.station.id })
+        // Ad büyük/küçük harf farkıyla yazılsa da eşleşir.
+        assertEquals(listOf("km185"), plan(carA(80.0), 400, stations, operators = setOf("TRUGO")).stops.map { it.station.id })
+        // Tercih edilen ağ menzilde yoksa diğer ağ yine önerilir.
+        assertEquals(listOf("km200"), plan(carA(80.0), 400, stations, operators = setOf("Eşarj")).stops.map { it.station.id })
     }
 }

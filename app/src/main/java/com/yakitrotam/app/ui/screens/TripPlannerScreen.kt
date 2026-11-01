@@ -7,6 +7,18 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import com.yakitrotam.app.data.model.SavedRoute
+import com.yakitrotam.app.ui.components.OperatorSheet
+import com.yakitrotam.app.ui.theme.AccentSoft
+import com.yakitrotam.app.ui.theme.CardSurface
+import com.yakitrotam.app.ui.theme.FuelAmber
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -110,12 +122,18 @@ fun TripPlannerScreen(
     onCalculateTrip: () -> Unit,
     onDismissError: () -> Unit,
     onFirstRunDone: () -> Unit,
+    onSaveRoute: () -> Unit = {},
+    onApplySavedRoute: (SavedRoute) -> Unit = {},
+    onRemoveSavedRoute: (SavedRoute) -> Unit = {},
+    onToggleOperator: (String) -> Unit = {},
+    onClearOperators: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showOriginSearch by remember { mutableStateOf(false) }
     var showDestinationSearch by remember { mutableStateOf(false) }
     var showVehicleSheet by remember { mutableStateOf(false) }
     var showBrandSheet by remember { mutableStateOf(false) }
+    var showOperatorSheet by remember { mutableStateOf(false) }
 
     // İlk açılışta araç bilgileri bir kez sorulur; sonrasında kayıtlı değerler kullanılır.
     LaunchedEffect(uiState.isFirstRun) { if (uiState.isFirstRun) showVehicleSheet = true }
@@ -191,8 +209,26 @@ fun TripPlannerScreen(
                 onRequestLocation = requestLocation
             )
 
+            SavedRoutesRow(
+                routes = uiState.savedRoutes,
+                currentLabel = SavedRoute(uiState.origin, uiState.destination).label,
+                onSave = onSaveRoute,
+                onApply = onApplySavedRoute,
+                onRemove = onRemoveSavedRoute
+            )
+
             if (uiState.vehicleProfile.isElectric) {
                 BatteryCard(vehicleProfile = uiState.vehicleProfile, onUpdate = onUpdateProfile)
+
+                SurfaceCard(padding = 0.dp, spacing = 0.dp) {
+                    SettingRow(
+                        icon = Icons.Default.EvStation,
+                        title = "Şarj ağı tercihi",
+                        summary = if (uiState.preferredOperators.isEmpty()) "Tüm ağlar"
+                        else uiState.preferredOperators.joinToString(", "),
+                        onClick = { showOperatorSheet = true }
+                    )
+                }
 
                 Text(
                     "Şarj istasyonları EPDK kayıtlarından alınır. Yalnızca DC hızlı şarj planlanır; " +
@@ -314,6 +350,15 @@ fun TripPlannerScreen(
         )
     }
 
+    if (showOperatorSheet) {
+        OperatorSheet(
+            selected = uiState.preferredOperators,
+            onToggle = onToggleOperator,
+            onClear = onClearOperators,
+            onDismiss = { showOperatorSheet = false }
+        )
+    }
+
     if (showBrandSheet) {
         BrandSheet(
             selectedBrands = uiState.selectedBrands,
@@ -412,6 +457,61 @@ private fun LocationRow(
             )
         }
         trailing?.invoke()
+    }
+}
+
+/**
+ * Kayıtlı rotalar: dokununca kalkış ve varış dolar, uzun basınca silinir. Şu anki rota kayıtlı
+ * değilse sonda "Rotayı kaydet" çipi durur.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SavedRoutesRow(
+    routes: List<SavedRoute>,
+    currentLabel: String,
+    onSave: () -> Unit,
+    onApply: (SavedRoute) -> Unit,
+    onRemove: (SavedRoute) -> Unit
+) {
+    val context = LocalContext.current
+    val alreadySaved = routes.any { it.label == currentLabel }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(routes, key = { it.label }) { route ->
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (route.label == currentLabel) AccentSoft else CardSurface)
+                    .combinedClickable(
+                        onClick = { onApply(route) },
+                        onLongClick = {
+                            onRemove(route)
+                            Toast.makeText(context, "${route.label} silindi", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(Icons.Default.Star, null, tint = FuelAmber, modifier = Modifier.size(16.dp))
+                Text(route.label, style = MaterialTheme.typography.labelLarge, color = TextPrimary, maxLines = 1)
+            }
+        }
+        if (!alreadySaved) item {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable {
+                        onSave()
+                        Toast.makeText(context, "Kaydedildi. Silmek için çipe uzun bas.", Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(Icons.Default.StarBorder, null, tint = Accent, modifier = Modifier.size(16.dp))
+                Text("Rotayı kaydet", style = MaterialTheme.typography.labelLarge, color = Accent)
+            }
+        }
     }
 }
 

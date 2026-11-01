@@ -1,5 +1,7 @@
 package com.yakitrotam.app.data.repository
 
+import com.yakitrotam.app.domain.RefSegment
+import com.yakitrotam.app.domain.Tolls
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.RoadDetour
@@ -47,9 +49,26 @@ class RouteRepository {
      * İnternet varsa OSRM API'den gerçek sürüş rotasını alır.
      * Başarısız olursa veya çevrimdışıysa akıllı otoyol koridoru fallback'ini kullanır.
      */
+    /** Adımların yol numaraları (O-5) ve uzunlukları; ücret hesabı için. */
+    private fun refSegments(route: JSONObject): List<RefSegment> {
+        val result = mutableListOf<RefSegment>()
+        val legs = route.optJSONArray("legs") ?: return result
+        for (l in 0 until legs.length()) {
+            val steps = legs.getJSONObject(l).optJSONArray("steps") ?: continue
+            for (s in 0 until steps.length()) {
+                val step = steps.getJSONObject(s)
+                val ref = step.optString("ref")
+                val location = step.optJSONObject("maneuver")?.optJSONArray("location") ?: continue
+                if (ref.isBlank()) continue
+                result += RefSegment(ref, LatLng(location.getDouble(1), location.getDouble(0)), step.optDouble("distance", 0.0) / 1000.0)
+            }
+        }
+        return result
+    }
+
     suspend fun getRoute(start: LatLng, end: LatLng): RoutePath = withContext(Dispatchers.IO) {
         try {
-            val osrmUrl = "${Endpoints.osrm}/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson"
+            val osrmUrl = "${Endpoints.osrm}/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true"
             val request = Request.Builder().url(osrmUrl).build()
             val response = httpClient.newCall(request).execute()
 
@@ -71,7 +90,7 @@ class RouteRepository {
                         }
                         if (points.isNotEmpty()) {
                             val durationMinutes = route.optDouble("duration").takeIf { it > 0 }?.div(60.0)
-                            return@withContext RoutePath(points, durationMinutes)
+                            return@withContext RoutePath(points, durationMinutes, Tolls.estimate(points, refSegments(route)))
                         }
                     }
                 }

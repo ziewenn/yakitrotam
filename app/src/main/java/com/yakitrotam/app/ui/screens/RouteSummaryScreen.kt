@@ -1,5 +1,6 @@
 package com.yakitrotam.app.ui.screens
 
+import com.yakitrotam.app.domain.Tolls
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -318,6 +319,7 @@ private fun CostBreakdownCard(tripResult: TripPlanResult, modifier: Modifier = M
             "${formatDecimal(tripResult.totalFuelConsumedLiters)} L × ${formatPrice(price.priceFor(fuelType))}",
             formatMoney(tripResult.totalEstimatedCostTL)
         )
+        TollRow(tripResult)
         CostRow(
             "Duraklarda alınacak yakıt",
             "${formatDecimal(tripResult.stops.sumOf { it.refuelLiters })} L, son durakta yetecek kadar",
@@ -353,6 +355,7 @@ private fun EvCostBreakdown(tripResult: TripPlanResult, modifier: Modifier = Mod
             "${formatDecimal(tripResult.totalFuelConsumedLiters / 0.95)} kWh (şarj kaybıyla) × ${formatPrice(average)} ortalama",
             formatMoney(tripResult.totalEstimatedCostTL)
         )
+        TollRow(tripResult)
         CostRow(
             "Duraklarda şarj",
             "${formatDecimal(tripResult.stops.sumOf { it.refuelLiters })} kWh, son durakta yetecek kadar",
@@ -374,6 +377,17 @@ private fun EvCostBreakdown(tripResult: TripPlanResult, modifier: Modifier = Mod
             color = TextMuted
         )
     }
+}
+
+/** Köprü ve otoyol ücreti: yol numarasından tahmin edilir, toplam maliyete eklenmez. */
+@Composable
+private fun TollRow(tripResult: TripPlanResult) {
+    val tolls = tripResult.tolls ?: return
+    CostRow(
+        "Köprü ve otoyol (tahmini)",
+        tolls.items.joinToString(", ") { it.name } + " · KGM ${Tolls.TARIFF_DATE} tarifesi, otomobil",
+        formatMoney(tolls.totalTL)
+    )
 }
 
 @Composable

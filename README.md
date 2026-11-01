@@ -116,6 +116,16 @@ Yalnızca `https` adresleri kabul edilir.
 - Harita sekmesi: yakındaki akaryakıt ya da şarj istasyonları (150+ kW süzgeci),
   dokununca güç, fiyat, yol tarifi ve "Rota planla". Konum izni varsa harita
   sürücünün çevresinde açılır.
+- Köprü ve otoyol ücreti (tahmini, otomobil): Boğaz köprüleri, Osmangazi, 1915
+  Çanakkale ve Avrasya Tüneli rotadan; otoyollar OSRM'nin yol numarasına (O-5
+  gibi) göre gidilen km oranıyla, KGM 2026 tarifelerinden (`domain/Tolls.kt`).
+- Kayıtlı rotalar (planlayıcıda çip; uzun basınca silinir) ve haritada favori
+  istasyonlar.
+- Elektrikli araçta şarj ağı tercihi: üyeliği olan ağların istasyonları öne
+  alınır, menzilde yoksa başka ağ önerilir.
+- Defter sekmesi: dolum/şarj kayıtları, iki tam dolum arasından gerçek tüketim
+  ve "Planlarda bunu kullan". Kayıtlar yalnızca telefonda tutulur.
+- Ana ekran widget'ı: kalkış ilinin benzin, motorin, otogaz fiyatı.
 - Birkaç plandan sonra Google Play'in uygulama içi puanlama penceresi istenir.
 - İsteğe bağlı fiyat bildirimi: seçili yakıt türünün kalkış ilindeki fiyatı
   değişince haber verir. Karşılaştırma cihazda, WorkManager ile 6 saatte bir
@@ -279,8 +289,12 @@ python tools/build_chargers.py chargers.json --raw chargers.json.raw.json
 
 ## Bilinen sınırlar
 
-- Şarj istasyonlarının doluluk, arıza ve çalışma saati bilgisi yoktur (EPDK
-  servisinde yok). Fiyat istasyon bazında değil operatör bazındadır; üyelik
+- Şarj istasyonlarının doluluk, arıza ve çalışma saati bilgisi yoktur. EPDK
+  servisinde yok; operatörlerin (ZES, Trugo, Eşarj, WAT…) herkese açık bir API'si
+  da yok (Kasım 2026). Mart 2026 yönetmeliğiyle EPDK'nın ortak platformu
+  geldiğinde ya da bir operatör izin verdiğinde eklenebilir.
+- Geçiş ücretleri tahminidir: gişe matrisi yerine km oranı kullanılır, tarifeler
+  yılda iki kez (Ocak, Temmuz) elle güncellenir. Fiyat istasyon bazında değil operatör bazındadır; üyelik
   indirimleri hesaba katılmaz.
 
 - Otogaz fiyatı bir web sayfasından ayrıştırılıyor; sayfa düzeni değişirse

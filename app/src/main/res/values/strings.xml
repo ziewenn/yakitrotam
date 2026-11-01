@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">YakıtRotam</string>
     <string name="tagline">Akıllı Akaryakıt &amp; Rota Planlayıcı</string>
+    <string name="widget_description">Bulunduğun ilin güncel pompa fiyatları</string>
 </resources>

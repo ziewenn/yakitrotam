@@ -63,7 +63,11 @@ data class StopAlternative(
 }
 
 /** Rota çizgisi ve yol servisinin süre tahmini (yedek rotada süre yoktur). */
-data class RoutePath(val points: List<LatLng>, val durationMinutes: Double? = null)
+data class RoutePath(
+    val points: List<LatLng>,
+    val durationMinutes: Double? = null,
+    val tolls: com.yakitrotam.app.domain.TollEstimate? = null
+)
 
 /** Bir istasyona uğramanın, doğrudan devam etmeye göre gerçek yol ağındaki ek maliyeti. */
 data class RoadDetour(
@@ -95,7 +99,9 @@ data class TripPlanResult(
     /** Menzil içinde uygun istasyon bulunamadıysa kullanıcıya gösterilecek uyarı. */
     val warning: String? = null,
     /** Yol servisinin verdiği duraksız sürüş süresi; alternatif seçilince yeniden kullanılır. */
-    val routeDurationMinutes: Double? = null
+    val routeDurationMinutes: Double? = null,
+    /** Tahmini köprü/otoyol ücreti; rota ücretsizse ya da yol servisi yoksa null. */
+    val tolls: com.yakitrotam.app.domain.TollEstimate? = null
 ) {
     val stopsCount: Int
         get() = stops.size

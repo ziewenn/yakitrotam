@@ -117,6 +117,15 @@ without waiting for a store update. Only `https` addresses are accepted.
 - Map tab: nearby fuel or charging stations (150+ kW filter); tapping one shows
   power, price, directions and "plan a route". With location permission the map
   opens around the driver.
+- Bridge and motorway tolls (estimated, passenger car): Bosphorus bridges,
+  Osmangazi, 1915 Çanakkale and the Eurasia Tunnel from the route geometry;
+  motorways pro rata by OSRM road refs (e.g. O-5), KGM 2026 tariffs (`domain/Tolls.kt`).
+- Saved routes (chips in the planner; long-press to delete) and favourite stations on the map.
+- EV charging network preference: stations of networks you are a member of are
+  preferred; another network is suggested if none is in range.
+- Log tab: fill-ups/charges, real consumption between two full fills and
+  "use this in plans". Entries stay on the phone.
+- Home-screen widget: petrol, diesel and LPG prices for your departure province.
 - After a few plans the app requests Google Play's in-app review prompt.
 - Optional price alerts: a notification when the price of your fuel type changes
   in your origin province. The comparison runs on the device every 6 hours via

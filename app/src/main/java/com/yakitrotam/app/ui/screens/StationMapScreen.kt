@@ -41,6 +41,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.yakitrotam.app.ui.theme.FuelAmber
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,12 +98,15 @@ fun StationMapScreen(
     locate: suspend () -> LatLng?,
     onNavigate: (GasStation) -> Unit,
     onPlanTo: (GasStation) -> Unit,
+    favoriteIds: Set<String> = emptySet(),
+    onToggleFavorite: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var electric by rememberSaveable { mutableStateOf(startElectric) }
     var fastOnly by rememberSaveable { mutableStateOf(false) }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var all by remember { mutableStateOf<List<GasStation>?>(null) }
     var failed by remember { mutableStateOf(false) }
     var center by remember { mutableStateOf(startCenter) }
@@ -139,13 +145,17 @@ fun StationMapScreen(
     // İzin önceden verilmişse harita doğrudan sürücünün çevresinde açılır.
     LaunchedEffect(Unit) { if (hasLocationPermission()) goToMyLocation() }
 
-    val visible = remember(all, fastOnly, electric) {
-        all.orEmpty().filter { !electric || !fastOnly || ((it.ccsKw ?: it.chademoKw ?: 0.0) >= FAST_CHARGE_KW) }
+    val visible = remember(all, fastOnly, electric, favoritesOnly, favoriteIds) {
+        all.orEmpty().filter {
+            (!electric || !fastOnly || ((it.ccsKw ?: it.chademoKw ?: 0.0) >= FAST_CHARGE_KW)) &&
+                (!favoritesOnly || it.id in favoriteIds)
+        }
     }
-    val nearby = remember(visible, center) {
+    val nearby = remember(visible, center, favoritesOnly) {
         visible.asSequence()
             .map { it to GeoUtils.distanceKm(center, it.location) }
-            .filter { it.second <= NEARBY_MAX_KM }
+            // Favoriler uzakta da olsa listelenir.
+            .filter { favoritesOnly || it.second <= NEARBY_MAX_KM }
             .sortedBy { it.second }
             .take(NEARBY_COUNT)
             .toList()
@@ -166,6 +176,7 @@ fun StationMapScreen(
             MapChip("Akaryakıt", Icons.Default.LocalGasStation, selected = !electric) { electric = false }
             MapChip("Şarj (DC)", Icons.Default.Bolt, selected = electric) { electric = true }
             if (electric) MapChip("150+ kW", null, selected = fastOnly) { fastOnly = !fastOnly }
+            MapChip("Favoriler", Icons.Default.Star, selected = favoritesOnly) { favoritesOnly = !favoritesOnly }
         }
         AdBanner(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
 
@@ -213,10 +224,13 @@ fun StationMapScreen(
                     selected != null -> SelectedStationCard(
                         station = selected,
                         distanceKm = GeoUtils.distanceKm(center, selected.location),
+                        isFavorite = selected.id in favoriteIds,
+                        onToggleFavorite = { onToggleFavorite(selected.id) },
                         onClose = { selectedId = null },
                         onNavigate = { onNavigate(selected) },
                         onPlanTo = { onPlanTo(selected) }
                     )
+                    nearby.isEmpty() && favoritesOnly -> StatusPill("Favorin yok. İstasyona dokunup yıldıza bas.")
                     nearby.isEmpty() -> StatusPill("Bu çevrede istasyon yok; haritayı kaydır.")
                     else -> LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -284,7 +298,7 @@ private fun stationInfo(station: GasStation): String =
     }
 
 private fun operatorOf(station: GasStation): String? =
-    station.chargeInfo?.substringBefore(" · ")?.takeIf { it.isNotBlank() }
+    station.operatorName ?: station.chargeInfo?.substringBefore(" · ")?.takeIf { it.isNotBlank() }
 
 @Composable
 private fun StationIcon(station: GasStation, size: Int) {
@@ -324,6 +338,8 @@ private fun NearbyCard(station: GasStation, distanceKm: Double, onClick: () -> U
 private fun SelectedStationCard(
     station: GasStation,
     distanceKm: Double,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onClose: () -> Unit,
     onNavigate: () -> Unit,
     onPlanTo: () -> Unit
@@ -350,6 +366,10 @@ private fun SelectedStationCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+            IconButton(onClick = onToggleFavorite) {
+                if (isFavorite) Icon(Icons.Default.Star, "Favorilerden çıkar", tint = FuelAmber)
+                else Icon(Icons.Default.StarBorder, "Favorilere ekle", tint = TextSecondary)
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Kapat", tint = TextSecondary) }
         }

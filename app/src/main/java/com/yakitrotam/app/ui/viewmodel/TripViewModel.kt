@@ -40,7 +40,11 @@ data class TripUiState(
     val loadingStep: String = "",
     val isLocationLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isFirstRun: Boolean = false
+    val isFirstRun: Boolean = false,
+    val savedRoutes: List<SavedRoute> = emptyList(),
+    val favoriteStationIds: Set<String> = emptySet(),
+    val preferredOperators: Set<String> = emptySet(),
+    val logEntries: List<LogEntry> = emptyList()
 )
 
 @OptIn(FlowPreview::class)
@@ -71,7 +75,11 @@ class TripViewModel(
                 ?: popularCities.firstOrNull { it.name.contains("Antalya") } ?: popularCities[1],
             vehicleProfile = saved.vehicleProfile,
             selectedBrands = saved.selectedBrands,
-            isFirstRun = preferences?.isFirstRun() == true
+            isFirstRun = preferences?.isFirstRun() == true,
+            savedRoutes = saved.savedRoutes,
+            favoriteStationIds = saved.favoriteStationIds,
+            preferredOperators = saved.preferredOperators,
+            logEntries = saved.logEntries
         )
     )
     val uiState: StateFlow<TripUiState> = _uiState.asStateFlow()
@@ -326,7 +334,8 @@ class TripViewModel(
                         vehicleProfile = currentState.vehicleProfile,
                         fuelPrice = priceSnapshot,
                         detourResolver = detourResolver,
-                        routeDurationMinutes = route.durationMinutes
+                        routeDurationMinutes = route.durationMinutes,
+                        preferredOperators = currentState.preferredOperators
                     ) else optimizerEngine.calculateTripPlan(
                         origin = currentState.origin,
                         destination = currentState.destination,
@@ -344,7 +353,7 @@ class TripViewModel(
                     it.copy(
                         isLoading = false,
                         loadingStep = "",
-                        tripResult = result,
+                        tripResult = result.copy(tolls = route.tolls),
                         livePrice = priceSnapshot,
                         errorMessage = null
                     )
@@ -394,7 +403,8 @@ class TripViewModel(
                     fuelPrice = trip.fuelPrice,
                     forcedStationIds = forcedStops,
                     detourResolver = detourResolver,
-                    routeDurationMinutes = trip.routeDurationMinutes
+                    routeDurationMinutes = trip.routeDurationMinutes,
+                    preferredOperators = _uiState.value.preferredOperators
                 ) else optimizerEngine.calculateTripPlan(
                     origin = trip.origin,
                     destination = trip.destination,
@@ -408,8 +418,58 @@ class TripViewModel(
                     routeDurationMinutes = trip.routeDurationMinutes
                 )
             }
-            _uiState.update { it.copy(tripResult = updated) }
+            _uiState.update { it.copy(tripResult = updated.copy(tolls = trip.tolls)) }
         }
+    }
+
+    /** Kayıtlı rotalar, favoriler, şarj ağı tercihi ve defter: değişince hemen diske yazılır. */
+    private fun updateUserData(change: (SavedTripState) -> SavedTripState) {
+        saved = change(saved)
+        preferences?.save(saved)
+        _uiState.update {
+            it.copy(
+                savedRoutes = saved.savedRoutes,
+                favoriteStationIds = saved.favoriteStationIds,
+                preferredOperators = saved.preferredOperators,
+                logEntries = saved.logEntries
+            )
+        }
+    }
+
+    /** Şu anki kalkış ve varışı kayıtlı rotalara ekler (aynısı varsa eklemez, en fazla 8). */
+    fun saveCurrentRoute() {
+        val route = SavedRoute(_uiState.value.origin, _uiState.value.destination)
+        updateUserData { state ->
+            state.copy(savedRoutes = (listOf(route) + state.savedRoutes.filterNot { it.label == route.label }).take(8))
+        }
+    }
+
+    fun removeSavedRoute(route: SavedRoute) = updateUserData { it.copy(savedRoutes = it.savedRoutes - route) }
+
+    fun applySavedRoute(route: SavedRoute) {
+        _uiState.update { it.copy(origin = route.origin, destination = route.destination, tripResult = null, errorMessage = null) }
+        refreshPrices()
+    }
+
+    fun toggleFavorite(stationId: String) = updateUserData {
+        val ids = it.favoriteStationIds
+        it.copy(favoriteStationIds = if (stationId in ids) ids - stationId else ids + stationId)
+    }
+
+    fun toggleOperator(name: String) = updateUserData {
+        val set = it.preferredOperators
+        it.copy(preferredOperators = if (name in set) set - name else set + name)
+    }
+
+    fun clearOperators() = updateUserData { it.copy(preferredOperators = emptySet()) }
+
+    fun addLogEntry(entry: LogEntry) = updateUserData { it.copy(logEntries = it.logEntries + entry) }
+
+    fun removeLogEntry(id: Long) = updateUserData { it.copy(logEntries = it.logEntries.filterNot { e -> e.id == id }) }
+
+    /** Defterden ölçülen gerçek tüketimi araca uygular. */
+    fun applyMeasuredConsumption(value: Double) {
+        updateVehicleProfile(_uiState.value.vehicleProfile.copy(consumptionPer100Km = (Math.round(value * 10) / 10.0)))
     }
 
     /** Harita ekranı: elektrikli araç için şarj, değilse akaryakıt istasyonlarının tamamı. */

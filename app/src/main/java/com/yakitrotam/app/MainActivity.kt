@@ -1,5 +1,9 @@
 package com.yakitrotam.app
 
+import com.yakitrotam.app.widget.PriceWidget
+import android.widget.Toast
+import com.yakitrotam.app.ui.screens.LogScreen
+import androidx.compose.material.icons.filled.Book
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -84,6 +88,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Uygulamadan çıkarken widget kalkış ili ve yakıt türündeki değişikliği hemen göstersin.
+    override fun onStop() {
+        super.onStop()
+        PriceWidget.refresh(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Android 15+ hedeflenince uygulama kenardan kenara çizilir; açık tema için
         // sistem çubuk simgeleri koyu renkte tutulur.
@@ -106,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     color = AppBackground
                 ) {
                     val uiState by viewModel.uiState.collectAsState()
-                    // Alt menü: 0 = rota planlayıcı, 1 = yakındaki istasyonlar haritası.
+                    // Alt menü: 0 = rota planlayıcı, 1 = yakındaki istasyonlar haritası, 2 = defter.
                     var tab by rememberSaveable { mutableIntStateOf(0) }
 
                     if (uiState.tripResult != null) {
@@ -127,7 +137,8 @@ class MainActivity : ComponentActivity() {
                             NavigationBar(containerColor = CardSurface) {
                                 listOf(
                                     Triple("Rota", Icons.Default.Route, 0),
-                                    Triple("Harita", Icons.Default.Map, 1)
+                                    Triple("Harita", Icons.Default.Map, 1),
+                                    Triple("Defter", Icons.Default.Book, 2)
                                 ).forEach { (label, icon, index) ->
                                     NavigationBarItem(
                                         selected = tab == index,
@@ -147,7 +158,19 @@ class MainActivity : ComponentActivity() {
                         // Ekranların kendi sistem çubuğu boşlukları alt menüyle iki kez sayılmasın.
                         val screenModifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
                         BackHandler(enabled = tab != 0) { tab = 0 }
-                        if (tab == 1) {
+                        if (tab == 2) {
+                            LogScreen(
+                                vehicleProfile = uiState.vehicleProfile,
+                                entries = uiState.logEntries,
+                                onAdd = { viewModel.addLogEntry(it) },
+                                onRemove = { viewModel.removeLogEntry(it) },
+                                onApplyConsumption = {
+                                    viewModel.applyMeasuredConsumption(it)
+                                    Toast.makeText(this@MainActivity, "Planlar artık bu tüketimle yapılacak", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = screenModifier
+                            )
+                        } else if (tab == 1) {
                             StationMapScreen(
                                 startElectric = uiState.vehicleProfile.isElectric,
                                 startCenter = uiState.origin.latLng,
@@ -158,6 +181,8 @@ class MainActivity : ComponentActivity() {
                                     viewModel.planToStation(it)
                                     tab = 0
                                 },
+                                favoriteIds = uiState.favoriteStationIds,
+                                onToggleFavorite = { viewModel.toggleFavorite(it) },
                                 modifier = screenModifier
                             )
                         } else TripPlannerScreen(
@@ -180,7 +205,12 @@ class MainActivity : ComponentActivity() {
                                 Ads.showInterstitialIfDue(this@MainActivity)
                             },
                             onDismissError = { viewModel.dismissError() },
-                            onFirstRunDone = { viewModel.completeFirstRun() }
+                            onFirstRunDone = { viewModel.completeFirstRun() },
+                            onSaveRoute = { viewModel.saveCurrentRoute() },
+                            onApplySavedRoute = { viewModel.applySavedRoute(it) },
+                            onRemoveSavedRoute = { viewModel.removeSavedRoute(it) },
+                            onToggleOperator = { viewModel.toggleOperator(it) },
+                            onClearOperators = { viewModel.clearOperators() }
                         )
                     }
                 }

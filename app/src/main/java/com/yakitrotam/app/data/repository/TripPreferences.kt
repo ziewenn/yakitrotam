@@ -3,6 +3,8 @@ package com.yakitrotam.app.data.repository
 import android.content.Context
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.FuelBrand
+import com.yakitrotam.app.data.model.LogEntry
+import com.yakitrotam.app.data.model.SavedRoute
 import com.yakitrotam.app.data.model.VehicleProfile
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -20,7 +22,13 @@ data class SavedTripState(
      * Diğer tür araç: yakıtlı araç seçiliyken kayıtlı elektrikli araç ya da tersi. Yakıt türü
      * elektrik ile yakıt arasında değişince profiller yer değiştirir; litre ve kWh karışmaz.
      */
-    val otherVehicle: VehicleProfile? = null
+    val otherVehicle: VehicleProfile? = null,
+    val savedRoutes: List<SavedRoute> = emptyList(),
+    /** Haritada öne çıkan istasyonlar ([com.yakitrotam.app.data.model.GasStation.id]). */
+    val favoriteStationIds: Set<String> = emptySet(),
+    /** Elektrikli araç: üyeliği olan şarj ağları; planda bu ağların istasyonları öne alınır. */
+    val preferredOperators: Set<String> = emptySet(),
+    val logEntries: List<LogEntry> = emptyList()
 ) {
     /** [place]'i en başa alır, aynı yeri tekrar eklemez, listeyi [MAX_RECENT_PLACES] ile sınırlar. */
     fun withRecentPlace(place: CityLocation): SavedTripState = copy(

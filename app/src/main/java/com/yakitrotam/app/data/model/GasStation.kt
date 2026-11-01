@@ -29,7 +29,9 @@ data class GasStation(
     /** Şarj istasyonu: kartta gösterilen soket özeti ("ZES · CCS 180 kW ×2 · AC 22 kW"). */
     val chargeInfo: String? = null,
     /** Şarj istasyonu: operatörün üyeliksiz DC liste fiyatı (TL/kWh); bilinmiyorsa null. */
-    val kwhPriceTL: Double? = null
+    val kwhPriceTL: Double? = null,
+    /** Şarj istasyonu: şarj ağının adı ("ZES", "Trugo"); şarj ağı tercihi bununla eşlenir. */
+    val operatorName: String? = null
 ) {
     val location: LatLng
         get() = LatLng(latitude, longitude)

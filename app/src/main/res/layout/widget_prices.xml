@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/widget_region"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="YakıtRotam"
+        android:textColor="#FF4B5D59"
+        android:textSize="12sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView android:id="@+id/widget_benzin" style="@style/WidgetPrice" android:text="Benzin —" />
+        <TextView android:id="@+id/widget_dizel" style="@style/WidgetPrice" android:text="Motorin —" />
+        <TextView android:id="@+id/widget_lpg" style="@style/WidgetPrice" android:text="LPG —" />
+    </LinearLayout>
+</LinearLayout>

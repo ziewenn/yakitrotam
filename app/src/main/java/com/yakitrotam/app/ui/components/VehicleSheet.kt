@@ -61,6 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.ArrivalFuel
 import com.yakitrotam.app.data.model.FuelBrand
+import com.yakitrotam.app.data.model.KNOWN_OPERATORS
 import com.yakitrotam.app.data.model.FuelType
 import com.yakitrotam.app.data.model.VehicleProfile
 import com.yakitrotam.app.ui.theme.Accent
@@ -513,6 +514,70 @@ fun BrandSheet(
     }
 }
 
+/** Şarj ağı tercihi: üyeliği olan ağların istasyonları planda öne alınır (filtre değil). */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun OperatorSheet(
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = CardSurface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Şarj ağı tercihi", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                    Text(
+                        "Üyeliğin olan ağları seç; plan önce onların istasyonlarında durur. " +
+                            "Menzilde yoksa yolda kalmaman için başka ağ önerilir.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+                TextButton(onClick = onClear, enabled = selected.isNotEmpty()) {
+                    Text("Temizle", color = if (selected.isEmpty()) TextMuted else Accent)
+                }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                KNOWN_OPERATORS.forEach { name ->
+                    val isSelected = name in selected
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggle(name) },
+                        label = { Text(name) },
+                        leadingIcon = if (isSelected) {
+                            { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
+                        } else null,
+                        colors = chipColors(),
+                        border = null
+                    )
+                }
+            }
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
+            ) { Text("Tamam", style = MaterialTheme.typography.titleLarge) }
+        }
+    }
+}
+
 /** Başlık, tek seçimli çipler ve ne işe yaradığını anlatan kısa not. */
 @Composable
 private fun <T> ChoiceGroup(
@@ -541,7 +606,7 @@ private fun <T> ChoiceGroup(
 }
 
 @Composable
-private fun chipColors() = FilterChipDefaults.filterChipColors(
+internal fun chipColors() = FilterChipDefaults.filterChipColors(
     containerColor = SurfaceMuted,
     labelColor = TextPrimary,
     selectedContainerColor = Accent,

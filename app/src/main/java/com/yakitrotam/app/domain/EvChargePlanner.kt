@@ -50,7 +50,9 @@ class EvChargePlanner(
         forcedStationIds: Map<Int, String> = emptyMap(),
         /** Ağ çağrısı yapabilir; arka plan iş parçacığında çağrılmalıdır. */
         detourResolver: DetourResolver? = null,
-        routeDurationMinutes: Double? = null
+        routeDurationMinutes: Double? = null,
+        /** Üyeliği olan şarj ağları; boşsa hepsi eşit. Filtre değil, puan tercihi. */
+        preferredOperators: Set<String> = emptySet()
     ): TripPlanResult {
         val cumulative = GeoUtils.cumulativeDistancesKm(routePoints)
         val total = cumulative.lastOrNull() ?: 0.0
@@ -69,6 +71,11 @@ class EvChargePlanner(
         val defaultPrice = FuelType.ELEKTRIK.fallbackPricePerLiterTL
 
         fun kwh(km: Double) = km * kwhPerKm
+
+        val preferredKeys = preferredOperators.mapTo(HashSet()) { operatorKey(it) }
+        fun operatorPenalty(station: GasStation): Double =
+            if (preferredKeys.isEmpty() || station.operatorName?.let { operatorKey(it) } in preferredKeys) 0.0
+            else NON_PREFERRED_OPERATOR_MIN
 
         /** Bu km'den (sapma dönüşü dahil) varışa hedef yüzdeyle ulaşmak için gereken şarj yüzdesi. */
         fun needPct(alongKm: Double, oneWayDetourKm: Double) =
@@ -198,6 +205,7 @@ class EvChargePlanner(
                 return (extraMinutes ?: (extraKm / 50.0 * 60.0)) +
                     chargeMinutes(battery, arrivalPct, max(arrivalPct, target), candidate.stationKw, carKw) +
                     (farthest - candidate.alongKm) * EARLY_STOP_MIN_PER_KM +
+                    operatorPenalty(candidate.station) +
                     max(0, stopsAfter(candidate.alongKm) - stopsAfter(farthest)) * EXTRA_STOP_MIN
             }
 
@@ -313,6 +321,8 @@ class EvChargePlanner(
 
     internal companion object {
         const val MAX_CHARGE_PERCENT = 80.0
+        /** Üyeliği olmayan ağda şarj ~25 dakikalık sapma kadar kötü sayılır; yoksa yine seçilir. */
+        const val NON_PREFERRED_OPERATOR_MIN = 25.0
         /** Son durakta, varışa yetecekse çıkılabilecek en yüksek yüzde. */
         const val FINISH_CHARGE_PERCENT = 90.0
         const val STOP_OVERHEAD_MIN = 5.0

@@ -81,7 +81,10 @@ android {
                 "\"${admobValue("ADMOB_NATIVE_ID").orEmpty()}\""
             )
             signingConfig = signingConfigs.findByName("release")
-            isMinifyEnabled = false
+            // R8: kodu küçültür ve gizler (Play'in "DEX optimizasyonu" uyarısı). Eşleme dosyası
+            // AAB'nin içine konur; Play çökme raporlarını otomatik çözer.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

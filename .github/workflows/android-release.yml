@@ -71,6 +71,7 @@ jobs:
           path: |
             YakitRotam-v1.0.${{ github.run_number }}.apk
             YakitRotam-v1.0.${{ github.run_number }}.aab
+            app/build/outputs/mapping/release/mapping.txt
           retention-days: 30
 
       - name: GitHub Release yayınla

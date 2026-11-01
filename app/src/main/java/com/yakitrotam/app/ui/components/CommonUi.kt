@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.FuelBrand
-import com.yakitrotam.app.ui.theme.DarkSurface
+import com.yakitrotam.app.ui.theme.CardSurface
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
@@ -46,7 +46,7 @@ fun SurfaceCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(CardShape)
-            .background(DarkSurface)
+            .background(CardSurface)
             .padding(padding),
         verticalArrangement = Arrangement.spacedBy(spacing),
         content = content

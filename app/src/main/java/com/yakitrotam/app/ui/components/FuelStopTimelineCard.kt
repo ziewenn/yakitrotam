@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -36,11 +37,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.FuelStop
+import com.yakitrotam.app.data.model.GasStation
 import com.yakitrotam.app.data.model.StopAlternative
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.theme.AccentSoft
+import com.yakitrotam.app.ui.theme.BorderColor
+import com.yakitrotam.app.ui.theme.CardSurface
+import com.yakitrotam.app.ui.theme.SurfaceMuted
 import com.yakitrotam.app.ui.theme.FuelAmber
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
@@ -57,6 +60,46 @@ private fun detourLabel(extraKm: Double, minutes: Double?): String =
         if (minutes != null && minutes >= 1.0) append(" · +${minutes.toInt()} dk")
     }
 
+/** Şarj istasyonunda marka logosu yerine şimşek; akaryakıtta marka rozeti. */
+@Composable
+private fun StationBadge(station: GasStation, size: Int) {
+    if (station.ccsKw != null || station.chademoKw != null) {
+        Box(
+            modifier = Modifier.size(size.dp).clip(CircleShape).background(AccentSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Bolt, contentDescription = null, tint = Accent, modifier = Modifier.size((size * 0.6f).dp))
+        }
+    } else {
+        BrandBadge(brand = station.brand, size = size)
+    }
+}
+
+/** Bataryanın durakta varış ve çıkış yüzdesi: dolu kısım, eklenen kısım, boş kısım. */
+@Composable
+private fun ChargeBar(arrivalPercent: Double, departurePercent: Double) {
+    val arrival = (arrivalPercent / 100).coerceIn(0.0, 1.0).toFloat()
+    val departure = (departurePercent / 100).coerceIn(arrival.toDouble(), 1.0).toFloat()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(SurfaceMuted)
+        ) {
+            if (arrival > 0f) Box(Modifier.weight(arrival).fillMaxHeight().background(Accent.copy(alpha = 0.45f)))
+            if (departure > arrival) Box(Modifier.weight(departure - arrival).fillMaxHeight().background(Accent))
+            if (departure < 1f) Spacer(Modifier.weight(1f - departure))
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Varış %${arrivalPercent.toInt()}",
+                style = MaterialTheme.typography.labelLarge,
+                color = TextSecondary,
+                modifier = Modifier.weight(1f)
+            )
+            Text("Çıkış %${departurePercent.toInt()}", style = MaterialTheme.typography.labelLarge, color = Accent)
+        }
+    }
+}
+
 /** Zaman çizelgesinin sol rayı: işaret + aşağı doğru devam eden ince çizgi. */
 @Composable
 fun TimelineRow(
@@ -71,9 +114,9 @@ fun TimelineRow(
             modifier = Modifier.width(RailWidth).fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(Modifier.width(2.dp).height(14.dp).background(if (drawLineAbove) DarkBorder else Color.Transparent))
+            Box(Modifier.width(2.dp).height(14.dp).background(if (drawLineAbove) BorderColor else Color.Transparent))
             marker()
-            Box(Modifier.width(2.dp).weight(1f).background(if (drawLineBelow) DarkBorder else Color.Transparent))
+            Box(Modifier.width(2.dp).weight(1f).background(if (drawLineBelow) BorderColor else Color.Transparent))
         }
         Spacer(Modifier.width(10.dp))
         Box(modifier = Modifier.weight(1f).padding(bottom = if (drawLineBelow) 12.dp else 0.dp)) { content() }
@@ -115,6 +158,7 @@ fun FuelStopTimelineCard(
     modifier: Modifier = Modifier
 ) {
     var showAlternatives by remember(stop.station.id) { mutableStateOf(false) }
+    val isEv = stop.chargeMinutes != null
     val fuelPercent = stop.arrivalFuelLevelPercent
     val levelColor = when {
         fuelPercent <= 12.0 -> ReserveRed
@@ -127,7 +171,7 @@ fun FuelStopTimelineCard(
         modifier = modifier,
         marker = {
             Box(
-                modifier = Modifier.size(24.dp).clip(CircleShape).background(DarkSurfaceVariant),
+                modifier = Modifier.size(24.dp).clip(CircleShape).background(SurfaceMuted),
                 contentAlignment = Alignment.Center
             ) {
                 Text("${stop.stopIndex}", style = MaterialTheme.typography.labelLarge, color = TextPrimary)
@@ -135,11 +179,11 @@ fun FuelStopTimelineCard(
         }
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().clip(CardShape).background(DarkSurface).padding(14.dp),
+            modifier = Modifier.fillMaxWidth().clip(CardShape).background(CardSurface).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                BrandBadge(brand = stop.station.brand, size = 40)
+                StationBadge(stop.station, size = 40)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         stop.station.name,
@@ -152,7 +196,7 @@ fun FuelStopTimelineCard(
                         listOf(
                             "${stop.distanceFromOriginKm.toInt()}. km",
                             stop.station.city,
-                            if (stop.pricePerLiterTL > 0) "${formatPrice(stop.pricePerLiterTL)}/L" else ""
+                            if (stop.pricePerLiterTL > 0) "${formatPrice(stop.pricePerLiterTL)}/${if (isEv) "kWh" else "L"}" else ""
                         ).filter(String::isNotBlank).joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
@@ -171,17 +215,29 @@ fun FuelStopTimelineCard(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Fact("Alınacak yakıt", "${formatDecimal(stop.refuelLiters)} L")
-                Fact("Tahmini tutar", formatMoney(stop.estimatedRefuelCostTL))
-                Fact("Varışta depo", "%${fuelPercent.toInt()}", valueColor = levelColor)
+            if (isEv) {
+                stop.station.chargeInfo?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                ChargeBar(stop.arrivalFuelLevelPercent, stop.departurePercent ?: stop.arrivalFuelLevelPercent)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Fact("${formatDecimal(stop.chargeKw ?: 0.0)} kW şarj", "~${stop.chargeMinutes.toInt()} dk", modifier = Modifier.weight(1f))
+                    Fact("Eklenecek", "+${formatDecimal(stop.refuelLiters)} kWh", modifier = Modifier.weight(1f))
+                    Fact("Tutar", "~${formatMoney(stop.estimatedRefuelCostTL)}", modifier = Modifier.weight(1f))
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Fact("Alınacak yakıt", "${formatDecimal(stop.refuelLiters)} L")
+                    Fact("Tahmini tutar", formatMoney(stop.estimatedRefuelCostTL))
+                    Fact("Varışta depo", "%${fuelPercent.toInt()}", valueColor = levelColor)
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { onNavigateToStop(stop) }) {
-                    Icon(Icons.Default.Directions, null, tint = AccentLime, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Directions, null, tint = Accent, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Yol tarifi", color = AccentLime, style = MaterialTheme.typography.titleMedium)
+                    Text("Yol tarifi", color = Accent, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.weight(1f))
                 if (stop.alternatives.isNotEmpty()) {
@@ -220,10 +276,10 @@ fun FuelStopTimelineCard(
 }
 
 @Composable
-private fun Fact(label: String, value: String, valueColor: Color = TextPrimary) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted)
-        Text(value, style = MaterialTheme.typography.titleLarge, color = valueColor)
+private fun Fact(label: String, value: String, valueColor: Color = TextPrimary, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, style = MaterialTheme.typography.titleLarge, color = valueColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -244,13 +300,13 @@ private fun AlternativeRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(DarkSurfaceVariant)
+            .background(SurfaceMuted)
             .clickable(onClick = onClick)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        BrandBadge(brand = alternative.station.brand, size = 32)
+        StationBadge(alternative.station, size = 32)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 // Adsız istasyon en azından yeriyle ayırt edilsin.
@@ -268,6 +324,6 @@ private fun AlternativeRow(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Text("Seç", style = MaterialTheme.typography.titleMedium, color = AccentLime)
+        Text("Seç", style = MaterialTheme.typography.titleMedium, color = Accent)
     }
 }

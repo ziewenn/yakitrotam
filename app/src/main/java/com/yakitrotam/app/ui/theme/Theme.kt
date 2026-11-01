@@ -1,36 +1,40 @@
 package com.yakitrotam.app.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-private val DarkColorScheme = darkColorScheme(
-    primary = AccentLime,
-    onPrimary = DarkBackground,
-    primaryContainer = AccentLimeDim,
-    onPrimaryContainer = DarkBackground,
+private val LightColorScheme = lightColorScheme(
+    primary = Accent,
+    onPrimary = OnAccent,
+    primaryContainer = AccentSoft,
+    onPrimaryContainer = AccentDim,
     secondary = FuelAmber,
-    onSecondary = DarkBackground,
+    onSecondary = OnAccent,
     tertiary = AccentViolet,
-    background = DarkBackground,
+    background = AppBackground,
     onBackground = TextPrimary,
-    surface = DarkSurface,
+    surface = CardSurface,
     onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
+    surfaceVariant = SurfaceMuted,
     onSurfaceVariant = TextSecondary,
     error = ReserveRed,
-    onError = DarkBackground,
-    outline = DarkBorder,
-    outlineVariant = DarkBorder,
-    surfaceContainer = DarkSurface,
+    onError = OnAccent,
+    outline = BorderColor,
+    outlineVariant = BorderColor,
+    surfaceContainer = CardSurface,
+    surfaceContainerLow = CardSurface,
     surfaceContainerHigh = ElevatedSurface
 )
 
-/** Uygulama tek temalıdır: sürüş sırasında okunaklı olan koyu tema. */
+/**
+ * Uygulama tek temalıdır: açık nane teması. Sistemin karanlık moduna uymaz.
+ * ponytail: renkler bileşenlere doğrudan bağlı; karanlık mod istenirse MaterialTheme.colorScheme'e taşınmalı.
+ */
 @Composable
 fun YakitRotamTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
         content = content
     )

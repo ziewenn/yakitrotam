@@ -30,6 +30,7 @@ data class ProvincePrices(val benzin: Double, val dizel: Double, val lpg: Double
         FuelType.BENZIN -> benzin
         FuelType.DIZEL -> dizel
         FuelType.LPG -> lpg
+        FuelType.ELEKTRIK -> null
     }
 }
 
@@ -41,8 +42,10 @@ class PriceTable(
     fun pricesFor(province: Province): ProvincePrices? = byProvinceKey[province.key]
 
     /** [point]'in bulunduğu ildeki litre fiyatı; otogaz kaynağı yoksa benzine oranlı tahmin. */
-    fun pricePerLiter(point: LatLng, fuelType: FuelType): Double? =
-        pricesFor(Provinces.nearest(point))?.let { it.livePrice(fuelType) ?: estimateLpg(it.benzin) }
+    fun pricePerLiter(point: LatLng, fuelType: FuelType): Double? {
+        if (fuelType.isElectric) return null // şarj fiyatı istasyonun operatöründen gelir
+        return pricesFor(Provinces.nearest(point))?.let { it.livePrice(fuelType) ?: estimateLpg(it.benzin) }
+    }
 
     fun snapshotFor(province: Province): FuelPriceSnapshot? {
         val prices = pricesFor(province) ?: return null

@@ -53,21 +53,25 @@ import com.yakitrotam.app.ui.components.formatDecimal
 import com.yakitrotam.app.ui.components.formatDuration
 import com.yakitrotam.app.ui.components.formatMoney
 import com.yakitrotam.app.ui.components.formatPrice
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBackground
-import com.yakitrotam.app.ui.theme.DarkBorder
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.theme.OnAccent
+import com.yakitrotam.app.ui.theme.AppBackground
+import com.yakitrotam.app.ui.theme.BorderColor
 import com.yakitrotam.app.ui.theme.FuelAmber
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
+import com.yakitrotam.app.data.model.FuelType
+import com.yakitrotam.app.ui.theme.CardSurface
 import com.yakitrotam.app.util.GoogleMapsLauncher
 import com.yakitrotam.app.util.TripShareText
 
 /**
- * Plan sonucu. Sıra, sürücünün sorduğu sırayı izler: nereden geçiyorum (harita), ne kadar
- * sürer ve tutar (özet), nerede duruyorum (duraklar), ayrıntı isteyene maliyet dökümü.
+ * Plan sonucu. Sıra, sürücünün sorduğu sırayı izler: ne kadar sürer ve tutar (özet), nereden
+ * geçiyorum (harita), nerede duruyorum (duraklar), ayrıntı isteyene maliyet dökümü.
+ * Elektrikli araçta litre yerine kWh, yakıt yerine şarj yüzdesi ve şarj süresi gösterilir.
  */
 @Composable
 fun RouteSummaryScreen(
@@ -77,15 +81,16 @@ fun RouteSummaryScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isEv = tripResult.isEv
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = DarkBackground,
+        containerColor = AppBackground,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DarkBackground)
+                    .background(AppBackground)
                     .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -111,7 +116,7 @@ fun RouteSummaryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DarkBackground)
+                    .background(AppBackground)
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
@@ -119,7 +124,7 @@ fun RouteSummaryScreen(
                     onClick = { GoogleMapsLauncher.launchFullRouteInGoogleMaps(context, tripResult) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
                 ) {
                     Icon(Icons.Default.Navigation, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
@@ -135,9 +140,9 @@ fun RouteSummaryScreen(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp),
             contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp)
         ) {
-            item { RouteMiniMap(tripResult = tripResult) }
+            item { TripOverviewCard(tripResult) }
 
-            item { TripOverviewCard(tripResult, Modifier.padding(top = 12.dp)) }
+            item { RouteMiniMap(tripResult = tripResult, modifier = Modifier.padding(top = 12.dp)) }
 
             tripResult.warning?.let { warning ->
                 item { Notice(warning, FuelAmber, Modifier.padding(top = 12.dp)) }
@@ -145,7 +150,14 @@ fun RouteSummaryScreen(
 
             item {
                 Text(
-                    if (tripResult.hasStops) "Yakıt durakları" else "Yakıt durağı gerekmiyor",
+                    when {
+                        isEv && tripResult.hasStops -> "Şarj durakları"
+                        tripResult.warning != null && !tripResult.hasStops ->
+                            if (isEv) "Uygun şarj durağı bulunamadı" else "Uygun durak bulunamadı"
+                        isEv -> "Şarj durağı gerekmiyor"
+                        tripResult.hasStops -> "Yakıt durakları"
+                        else -> "Yakıt durağı gerekmiyor"
+                    },
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary,
                     modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp)
@@ -153,10 +165,15 @@ fun RouteSummaryScreen(
             }
 
             if (!tripResult.hasStops) {
-                item {
+                // Uyarı varsa (menzilde istasyon yok) başarı notu gösterilmez; uyarı yukarıda.
+                if (tripResult.warning == null) item {
                     Notice(
-                        "Rezerve düşmeden varış noktasına ulaşırsın. Varışta depoda yaklaşık " +
-                            "${formatDecimal(tripResult.arrivalFuelLiters)} L kalır.",
+                        if (isEv) {
+                            "Şarj etmeden varırsın. Varışta bataryada yaklaşık %${tripResult.arrivalFuelPercent.toInt()} kalır."
+                        } else {
+                            "Rezerve düşmeden varış noktasına ulaşırsın. Varışta depoda yaklaşık " +
+                                "${formatDecimal(tripResult.arrivalFuelLiters)} L kalır."
+                        },
                         SafeGreen,
                         icon = Icons.Default.CheckCircle
                     )
@@ -167,8 +184,13 @@ fun RouteSummaryScreen(
                 item {
                     TimelineEndpoint(
                         title = tripResult.origin.name,
-                        caption = "Depoda ${formatDecimal(tripResult.vehicleProfile.currentFuelLiters)} L " +
-                            "(%${tripResult.vehicleProfile.currentLevelPercent.toInt()})",
+                        caption = with(tripResult.vehicleProfile) {
+                            if (isEv) {
+                                "Bataryada %${currentLevelPercent.toInt()} (${formatDecimal(currentFuelLiters)} kWh)"
+                            } else {
+                                "Depoda ${formatDecimal(currentFuelLiters)} L (%${currentLevelPercent.toInt()})"
+                            }
+                        },
                         color = SafeGreen,
                         isStart = true
                     )
@@ -187,8 +209,12 @@ fun RouteSummaryScreen(
                 item {
                     TimelineEndpoint(
                         title = tripResult.destination.name,
-                        caption = "Depoda ~${formatDecimal(tripResult.arrivalFuelLiters)} L " +
-                            "(%${tripResult.arrivalFuelPercent.toInt()}) kalır",
+                        caption = if (isEv) {
+                            "Varışta bataryada ~%${tripResult.arrivalFuelPercent.toInt()} kalır"
+                        } else {
+                            "Depoda ~${formatDecimal(tripResult.arrivalFuelLiters)} L " +
+                                "(%${tripResult.arrivalFuelPercent.toInt()}) kalır"
+                        },
                         color = ReserveRed,
                         isStart = false
                     )
@@ -199,8 +225,13 @@ fun RouteSummaryScreen(
 
             item {
                 Text(
-                    "İstasyonlar: OpenStreetMap katkıcıları · Fiyatlar: ${tripResult.fuelPrice.sourceName}, " +
-                        "${tripResult.fuelPrice.priceDate} · Rota: OSRM. Tüm değerler tahmindir.",
+                    if (isEv) {
+                        "Şarj istasyonları: EPDK · Rota: OSRM. Doluluk, arıza ve çalışma saati bilgisi yoktur; " +
+                            "tüm değerler tahmindir."
+                    } else {
+                        "İstasyonlar: OpenStreetMap katkıcıları · Fiyatlar: ${tripResult.fuelPrice.sourceName}, " +
+                            "${tripResult.fuelPrice.priceDate} · Rota: OSRM. Tüm değerler tahmindir."
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = TextMuted,
                     modifier = Modifier.padding(top = 16.dp, start = 4.dp, end = 4.dp)
@@ -210,46 +241,64 @@ fun RouteSummaryScreen(
     }
 }
 
-/** Üç temel sayı ve cebinden çıkacak para; tek bakışta okunur. */
+/** Üç temel sayı ayrı kutularda, altında cebinden çıkacak para; tek bakışta okunur. */
 @Composable
 private fun TripOverviewCard(tripResult: TripPlanResult, modifier: Modifier = Modifier) {
-    SurfaceCard(modifier = modifier, spacing = 14.dp) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Metric("Mesafe", "${tripResult.totalDistanceKm.toInt()} km")
-            Metric("Süre", formatDuration(tripResult.estimatedDrivingTimeMinutes))
-            Metric("Durak", if (tripResult.hasStops) "${tripResult.stopsCount}" else "Yok")
+    val isEv = tripResult.isEv
+    val chargeMinutes = tripResult.stops.sumOf { it.chargeMinutes ?: 0.0 }.toInt()
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            StatTile("${tripResult.totalDistanceKm.toInt()} km", "Mesafe", Modifier.weight(1f))
+            StatTile(
+                formatDuration(tripResult.estimatedDrivingTimeMinutes),
+                if (isEv && chargeMinutes > 0) "Süre · $chargeMinutes dk şarj" else "Süre",
+                Modifier.weight(1.3f)
+            )
+            StatTile(if (tripResult.hasStops) "${tripResult.stopsCount}" else "Yok", if (isEv) "Şarj durağı" else "Durak", Modifier.weight(1f))
         }
-        HorizontalDivider(color = DarkBorder)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Column {
-                Text("Duraklarda ödeyeceğin", style = MaterialTheme.typography.labelMedium, color = TextMuted)
-                Text(
-                    "~${formatMoney(tripResult.totalRefuelCostTL)}",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = TextPrimary
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("Yakacağın yakıt", style = MaterialTheme.typography.labelMedium, color = TextMuted)
-                Text(
-                    "${formatDecimal(tripResult.totalFuelConsumedLiters)} L",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = TextSecondary
-                )
+        SurfaceCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column {
+                    Text(
+                        if (isEv) "Şarjda ödeyeceğin" else "Duraklarda ödeyeceğin",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextMuted
+                    )
+                    Text(
+                        "~${formatMoney(tripResult.totalRefuelCostTL)}",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = TextPrimary
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        if (isEv) "Harcanacak enerji" else "Yakacağın yakıt",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextMuted
+                    )
+                    Text(
+                        "${formatDecimal(tripResult.totalFuelConsumedLiters)} ${tripResult.vehicleProfile.fuelType.unit}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = TextSecondary
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Metric(label: String, value: String) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted)
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.clip(CardShape).background(CardSurface).padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = Accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -258,6 +307,10 @@ private fun CostBreakdownCard(tripResult: TripPlanResult, modifier: Modifier = M
     val fuelType = tripResult.vehicleProfile.fuelType
     val price = tripResult.fuelPrice
 
+    if (tripResult.isEv) {
+        EvCostBreakdown(tripResult, modifier)
+        return
+    }
     SurfaceCard(modifier = modifier) {
         Text("Maliyet ayrıntısı", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
         CostRow(
@@ -286,6 +339,40 @@ private fun CostBreakdownCard(tripResult: TripPlanResult, modifier: Modifier = M
                 color = FuelAmber
             )
         }
+    }
+}
+
+@Composable
+private fun EvCostBreakdown(tripResult: TripPlanResult, modifier: Modifier = Modifier) {
+    val average = FuelType.ELEKTRIK.fallbackPricePerLiterTL
+    SurfaceCard(modifier = modifier) {
+        Text("Maliyet ayrıntısı", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+        CostRow(
+            "Yolculuğun enerji maliyeti",
+            // Tutar şebekeden çekilen enerjiyle hesaplanır (~%5 şarj kaybı); açıklama da onu gösterir.
+            "${formatDecimal(tripResult.totalFuelConsumedLiters / 0.95)} kWh (şarj kaybıyla) × ${formatPrice(average)} ortalama",
+            formatMoney(tripResult.totalEstimatedCostTL)
+        )
+        CostRow(
+            "Duraklarda şarj",
+            "${formatDecimal(tripResult.stops.sumOf { it.refuelLiters })} kWh, son durakta yetecek kadar",
+            formatMoney(tripResult.totalRefuelCostTL)
+        )
+        CostRow(
+            "100 km başına",
+            "${formatDecimal(tripResult.vehicleProfile.consumptionPer100Km)} kWh/100 km tüketimle",
+            formatMoney(
+                if (tripResult.totalDrivenDistanceKm > 0) {
+                    tripResult.totalEstimatedCostTL / tripResult.totalDrivenDistanceKm * 100.0
+                } else 0.0
+            )
+        )
+        Text(
+            "Şarj fiyatları operatörlerin üyeliksiz liste fiyatlarıdır; operatörü bilinmeyen istasyonda " +
+                "ortalama ${formatPrice(average)}/kWh kullanılır.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextMuted
+        )
     }
 }
 
@@ -321,8 +408,8 @@ private fun Notice(
 private fun shareTripPlan(context: Context, trip: TripPlanResult) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "YakıtRotam yakıt planı")
+        putExtra(Intent.EXTRA_SUBJECT, if (trip.isEv) "YakıtRotam şarj planı" else "YakıtRotam yakıt planı")
         putExtra(Intent.EXTRA_TEXT, TripShareText.build(trip))
     }
-    context.startActivity(Intent.createChooser(send, "Yakıt planını paylaş"))
+    context.startActivity(Intent.createChooser(send, if (trip.isEv) "Şarj planını paylaş" else "Yakıt planını paylaş"))
 }

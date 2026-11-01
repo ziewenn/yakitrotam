@@ -63,11 +63,11 @@ import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.LatLng
 import com.yakitrotam.app.data.model.PlaceSource
 import com.yakitrotam.app.data.model.PlaceSuggestion
-import com.yakitrotam.app.ui.theme.DarkBackground
-import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
-import com.yakitrotam.app.ui.theme.PrimaryBlue
+import com.yakitrotam.app.ui.theme.AppBackground
+import com.yakitrotam.app.ui.theme.BorderColor
+import com.yakitrotam.app.ui.theme.CardSurface
+import com.yakitrotam.app.ui.theme.SurfaceMuted
+import com.yakitrotam.app.ui.theme.Accent
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
@@ -110,7 +110,7 @@ fun PlaceSearchDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
+        Surface(modifier = Modifier.fillMaxSize(), color = AppBackground) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -139,7 +139,7 @@ fun PlaceSearchDialog(
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                     placeholder = { Text("Adres, işletme veya konum ara", color = TextMuted) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryBlue) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Accent) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
@@ -148,13 +148,13 @@ fun PlaceSearchDialog(
                         }
                     },
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = DarkSurfaceVariant,
-                        unfocusedContainerColor = DarkSurfaceVariant,
+                        focusedContainerColor = SurfaceMuted,
+                        unfocusedContainerColor = SurfaceMuted,
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = PrimaryBlue
+                        cursorColor = Accent
                     ),
                     shape = RoundedCornerShape(14.dp),
                     singleLine = true,
@@ -165,7 +165,7 @@ fun PlaceSearchDialog(
                 if (isSearching) {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        color = PrimaryBlue,
+                        color = Accent,
                         trackColor = Color.Transparent
                     )
                 } else {
@@ -239,16 +239,16 @@ fun PlaceSearchDialog(
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Box(
-                                modifier = Modifier.size(42.dp).clip(CircleShape).background(DarkSurfaceVariant),
+                                modifier = Modifier.size(42.dp).clip(CircleShape).background(SurfaceMuted),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (resolvingId == place.id) {
-                                    CircularProgressIndicator(Modifier.size(20.dp), color = PrimaryBlue, strokeWidth = 2.dp)
+                                    CircularProgressIndicator(Modifier.size(20.dp), color = Accent, strokeWidth = 2.dp)
                                 } else {
                                     Icon(
                                         if (place.source == PlaceSource.RECENT) Icons.Default.History else Icons.Default.LocationOn,
                                         null,
-                                        tint = PrimaryBlue,
+                                        tint = Accent,
                                         modifier = Modifier.size(21.dp)
                                     )
                                 }
@@ -273,7 +273,7 @@ fun PlaceSearchDialog(
                                 }
                             }
                         }
-                        HorizontalDivider(color = DarkBorder.copy(alpha = 0.55f))
+                        HorizontalDivider(color = BorderColor.copy(alpha = 0.55f))
                     }
 
                     if (!isSearching && searchResults.isEmpty()) {
@@ -318,7 +318,7 @@ private fun QuickActionRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clickable(onClick = onClick),
-        color = DarkSurface,
+        color = CardSurface,
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(
@@ -328,10 +328,10 @@ private fun QuickActionRow(
         ) {
             Box(
                 modifier = Modifier.size(40.dp).clip(CircleShape)
-                    .background(PrimaryBlue.copy(alpha = 0.18f)),
+                    .background(Accent.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = PrimaryBlue)
+                Icon(icon, null, tint = Accent)
             }
             Column {
                 Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold)

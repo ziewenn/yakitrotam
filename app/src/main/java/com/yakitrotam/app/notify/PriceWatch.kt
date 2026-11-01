@@ -72,7 +72,10 @@ object PriceWatch {
 
     internal suspend fun check(context: Context): Boolean {
         val saved = TripPreferences(context).load()
-        val fuelType = saved.vehicleProfile.fuelType
+        // Elektrikli araç seçiliyken bildirim kaydedilmiş yakıtlı aracın yakıtını izler; o da
+        // yoksa izlenecek pompa fiyatı yoktur.
+        val fuelVehicle = if (saved.vehicleProfile.isElectric) saved.otherVehicle else saved.vehicleProfile
+        val fuelType = fuelVehicle?.fuelType?.takeUnless { it.isElectric } ?: return true
         val province = saved.origin?.latLng?.let(Provinces::nearest)
             ?: Provinces.all.first { it.name == "İstanbul Anadolu" }
         val table = FuelPriceRepository().getTable() ?: return false

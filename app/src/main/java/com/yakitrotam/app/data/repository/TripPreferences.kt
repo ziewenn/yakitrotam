@@ -15,7 +15,12 @@ data class SavedTripState(
     val selectedBrands: Set<FuelBrand> = emptySet(),
     val origin: CityLocation? = null,
     val destination: CityLocation? = null,
-    val recentPlaces: List<CityLocation> = emptyList()
+    val recentPlaces: List<CityLocation> = emptyList(),
+    /**
+     * Diğer tür araç: yakıtlı araç seçiliyken kayıtlı elektrikli araç ya da tersi. Yakıt türü
+     * elektrik ile yakıt arasında değişince profiller yer değiştirir; litre ve kWh karışmaz.
+     */
+    val otherVehicle: VehicleProfile? = null
 ) {
     /** [place]'i en başa alır, aynı yeri tekrar eklemez, listeyi [MAX_RECENT_PLACES] ile sınırlar. */
     fun withRecentPlace(place: CityLocation): SavedTripState = copy(
@@ -25,7 +30,9 @@ data class SavedTripState(
 
     companion object {
         const val MAX_RECENT_PLACES = 8
-        private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+        // coerceInputValues: eski bir sürüme dönülürse bilinmeyen enum değeri (ör. ELEKTRIK)
+        // tüm kaydı silmek yerine varsayılana döner.
+        private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; coerceInputValues = true }
 
         fun encode(state: SavedTripState): String = json.encodeToString(state)
 

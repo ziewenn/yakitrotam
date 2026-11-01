@@ -40,8 +40,12 @@ data class FuelStop(
     val alternatives: List<StopAlternative> = emptyList(),
     /** Gerçek yol ağından hesaplanan ek süre; yol verisi alınamadıysa null. */
     val detourMinutes: Double? = null,
-    /** Durağın bulunduğu ildeki litre fiyatı; tutar bununla hesaplanır. */
-    val pricePerLiterTL: Double = 0.0
+    /** Durağın bulunduğu ildeki litre fiyatı; tutar bununla hesaplanır. Elektrikte TL/kWh. */
+    val pricePerLiterTL: Double = 0.0,
+    /** Elektrikli araç: şarj süresi (dk), kullanılan güç (kW) ve şarjın bittiği yüzde. Yakıtta null. */
+    val chargeMinutes: Double? = null,
+    val chargeKw: Double? = null,
+    val departurePercent: Double? = null
 ) {
     val extraRoadKm: Double
         get() = detourDistanceKm * 2
@@ -96,6 +100,13 @@ data class TripPlanResult(
     val stopsCount: Int
         get() = stops.size
 
+    val isEv: Boolean
+        get() = vehicleProfile.isElectric
+
+    /** Google Haritalar bağlantısı en fazla [MAX_MAPS_WAYPOINTS] ara durak kabul eder. */
+    val mapsWaypoints: List<FuelStop>
+        get() = stops.take(MAX_MAPS_WAYPOINTS)
+
     val hasStops: Boolean
         get() = stops.isNotEmpty()
 
@@ -106,7 +117,7 @@ data class TripPlanResult(
         get() {
             val originStr = "${origin.latitude},${origin.longitude}"
             val destStr = "${destination.latitude},${destination.longitude}"
-            val waypointsStr = stops.joinToString("|") { "${it.station.latitude},${it.station.longitude}" }
+            val waypointsStr = mapsWaypoints.joinToString("|") { "${it.station.latitude},${it.station.longitude}" }
 
             return if (waypointsStr.isNotEmpty()) {
                 "https://www.google.com/maps/dir/?api=1&origin=$originStr&destination=$destStr&waypoints=$waypointsStr&travelmode=driving"
@@ -115,3 +126,6 @@ data class TripPlanResult(
             }
         }
 }
+
+/** https://developers.google.com/maps/documentation/urls/get-started : "waypoints" en fazla 9 nokta. */
+const val MAX_MAPS_WAYPOINTS = 9

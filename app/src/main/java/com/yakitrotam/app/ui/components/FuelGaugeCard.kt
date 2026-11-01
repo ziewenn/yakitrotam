@@ -46,7 +46,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yakitrotam.app.data.model.VehicleProfile
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.SurfaceMuted
 import com.yakitrotam.app.ui.theme.FuelAmber
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
@@ -129,7 +129,7 @@ fun FuelLevelCard(
 private fun StepButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(44.dp).clip(CircleShape).background(DarkSurfaceVariant)
+        modifier = Modifier.size(44.dp).clip(CircleShape).background(SurfaceMuted)
     ) {
         Icon(icon, contentDescription = label, tint = TextPrimary)
     }
@@ -202,7 +202,7 @@ fun FuelGauge(
                 )
             }
 
-            drawArc(DarkSurfaceVariant, GAUGE_START_ANGLE, GAUGE_SWEEP, false, arcTopLeft, arcSize,
+            drawArc(SurfaceMuted, GAUGE_START_ANGLE, GAUGE_SWEEP, false, arcTopLeft, arcSize,
                 style = Stroke(stroke, cap = StrokeCap.Round))
             drawArc(color, GAUGE_START_ANGLE, GAUGE_SWEEP * animated / 100f, false, arcTopLeft, arcSize,
                 style = Stroke(stroke, cap = StrokeCap.Round))

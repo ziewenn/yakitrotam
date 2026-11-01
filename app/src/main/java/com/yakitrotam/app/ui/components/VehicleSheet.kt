@@ -24,6 +24,13 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.yakitrotam.app.data.model.EvPresets
+import com.yakitrotam.app.data.model.EvPreset
+import com.yakitrotam.app.data.model.DcConnector
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +63,11 @@ import com.yakitrotam.app.data.model.ArrivalFuel
 import com.yakitrotam.app.data.model.FuelBrand
 import com.yakitrotam.app.data.model.FuelType
 import com.yakitrotam.app.data.model.VehicleProfile
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.theme.OnAccent
+import com.yakitrotam.app.ui.theme.BorderColor
+import com.yakitrotam.app.ui.theme.CardSurface
+import com.yakitrotam.app.ui.theme.SurfaceMuted
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
@@ -66,6 +75,7 @@ import com.yakitrotam.app.ui.theme.TextSecondary
 /**
  * Araç bilgileri nadiren değişir; bu yüzden ana ekranda yer kaplamaz, alttan açılan
  * sayfada düzenlenir. İlk açılışta [isFirstRun] ile karşılama metni gösterilir.
+ * Elektrikli araçta depo yerine batarya, litre yerine kWh sorulur ve hazır model listesi çıkar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,31 +86,71 @@ fun VehicleSheet(
     onDismiss: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    var consumptionText by remember { mutableStateOf(formatDecimal(vehicleProfile.consumptionPer100Km)) }
-    var capacityText by remember { mutableStateOf(formatDecimal(vehicleProfile.tankCapacityLiters)) }
+    val isEv = vehicleProfile.isElectric
+    // Alanlar kayıtlı değere bağlı: yakıt türü değişip profil yer değiştirince ya da hazır model
+    // seçilince yeni değerler görünür.
+    var consumptionText by remember(vehicleProfile.consumptionPer100Km) {
+        mutableStateOf(formatDecimal(vehicleProfile.consumptionPer100Km))
+    }
+    var capacityText by remember(vehicleProfile.tankCapacityLiters) {
+        mutableStateOf(formatDecimal(vehicleProfile.tankCapacityLiters))
+    }
+    var chargeKwText by remember(vehicleProfile.maxChargeKw) {
+        mutableStateOf(formatDecimal(vehicleProfile.maxChargeKw))
+    }
     // Çoğu sürücünün dokunmayacağı ayarlar; sayfayı kalabalıklaştırmasın diye kapalı başlar.
     var showAdvanced by remember { mutableStateOf(false) }
 
     fun commitConsumption() {
-        val value = parseDecimal(consumptionText)?.coerceIn(2.0, 60.0) ?: vehicleProfile.consumptionPer100Km
+        val range = if (isEv) 8.0..60.0 else 2.0..60.0
+        val value = parseDecimal(consumptionText)?.coerceIn(range) ?: vehicleProfile.consumptionPer100Km
         consumptionText = formatDecimal(value)
         if (value != vehicleProfile.consumptionPer100Km) onUpdateProfile(vehicleProfile.copy(consumptionPer100Km = value))
     }
 
     fun commitCapacity() {
-        val value = parseDecimal(capacityText)?.coerceIn(10.0, 1500.0) ?: vehicleProfile.tankCapacityLiters
+        // TIR depoları (çift depoyla 1.500 L'ye kadar) ve büyük bataryalar girilebilsin.
+        val range = if (isEv) 10.0..250.0 else 10.0..1500.0
+        val value = parseDecimal(capacityText)?.coerceIn(range) ?: vehicleProfile.tankCapacityLiters
         capacityText = formatDecimal(value)
         if (value != vehicleProfile.tankCapacityLiters) onUpdateProfile(vehicleProfile.copy(tankCapacityLiters = value))
     }
 
+    fun commitChargeKw() {
+        val value = parseDecimal(chargeKwText)?.coerceIn(20.0, 400.0) ?: vehicleProfile.maxChargeKw
+        chargeKwText = formatDecimal(value)
+        if (value != vehicleProfile.maxChargeKw) onUpdateProfile(vehicleProfile.copy(maxChargeKw = value))
+    }
+
+    fun commitAll() {
+        commitConsumption()
+        commitCapacity()
+        if (isEv) commitChargeKw()
+    }
+
+    /** Henüz kaydedilmemiş (odaktaki) sayıların da işlendiği profil; yakıt türü değişirken kaybolmasın. */
+    fun withPendingInput(): VehicleProfile {
+        val consumptionRange = if (isEv) 8.0..60.0 else 2.0..60.0
+        val capacityRange = if (isEv) 10.0..250.0 else 10.0..1500.0
+        return vehicleProfile.copy(
+            consumptionPer100Km = parseDecimal(consumptionText)?.coerceIn(consumptionRange) ?: vehicleProfile.consumptionPer100Km,
+            tankCapacityLiters = parseDecimal(capacityText)?.coerceIn(capacityRange) ?: vehicleProfile.tankCapacityLiters,
+            maxChargeKw = if (isEv) parseDecimal(chargeKwText)?.coerceIn(20.0, 400.0) ?: vehicleProfile.maxChargeKw
+            else vehicleProfile.maxChargeKw
+        )
+    }
+
+    // Sayfa aşağı kaydırılarak kapatılınca ModalBottomSheet ilk bestedeki geri çağrıyı kullanır;
+    // her zaman güncel profil ve metinlerle kaydetsin diye en son hali tutulur.
+    val dismissWithCommit by rememberUpdatedState {
+        commitAll()
+        onDismiss()
+    }
+
     ModalBottomSheet(
-        onDismissRequest = {
-            commitConsumption()
-            commitCapacity()
-            onDismiss()
-        },
+        onDismissRequest = { dismissWithCommit() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = DarkSurface
+        containerColor = CardSurface
     ) {
         Column(
             modifier = Modifier
@@ -130,32 +180,59 @@ fun VehicleSheet(
                     FuelType.entries.forEachIndexed { index, fuelType ->
                         SegmentedButton(
                             selected = vehicleProfile.fuelType == fuelType,
-                            onClick = { onUpdateProfile(vehicleProfile.copy(fuelType = fuelType)) },
+                            onClick = {
+                                // Odaktaki sayı önce profile işlenir, sonra tür değişir: tek güncelleme.
+                                val pending = withPendingInput()
+                                focusManager.clearFocus()
+                                onUpdateProfile(pending.copy(fuelType = fuelType))
+                            },
                             shape = SegmentedButtonDefaults.itemShape(index, FuelType.entries.size),
                             colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = AccentLime,
-                                activeContentColor = Color.Black,
-                                activeBorderColor = AccentLime,
+                                activeContainerColor = Accent,
+                                activeContentColor = OnAccent,
+                                activeBorderColor = Accent,
                                 inactiveContainerColor = Color.Transparent,
                                 inactiveContentColor = TextSecondary,
-                                inactiveBorderColor = DarkBorder
+                                inactiveBorderColor = BorderColor
                             ),
                             icon = {}
-                        ) { Text(fuelType.shortName()) }
+                        ) { Text(fuelType.shortName(), maxLines = 1) }
                     }
                 }
             }
 
+            if (isEv) {
+                EvModelPicker(
+                    currentName = vehicleProfile.name,
+                    onPick = { preset ->
+                        focusManager.clearFocus()
+                        onUpdateProfile(
+                            vehicleProfile.copy(
+                                name = preset?.label ?: VehicleProfile.EV_DEFAULT.name,
+                                tankCapacityLiters = preset?.batteryKwh ?: vehicleProfile.tankCapacityLiters,
+                                consumptionPer100Km = preset?.consumptionPer100Km ?: vehicleProfile.consumptionPer100Km,
+                                maxChargeKw = preset?.maxDcKw ?: vehicleProfile.maxChargeKw
+                            )
+                        )
+                    }
+                )
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Ortalama tüketim", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+                Text(
+                    if (isEv) "Ortalama tüketim (otoyolda)" else "Ortalama tüketim",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextSecondary
+                )
                 NumericField(
                     value = consumptionText,
                     onValueChange = { if (isDecimalInput(it)) consumptionText = it },
                     onCommit = ::commitConsumption,
-                    suffix = "L / 100 km"
+                    suffix = if (isEv) "kWh / 100 km" else "L / 100 km"
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(5.5, 6.8, 8.0, 10.0).forEach { preset ->
+                    val presets = if (isEv) listOf(15.0, 17.0, 19.0, 22.0) else listOf(5.5, 6.8, 8.0, 10.0)
+                    presets.forEach { preset ->
                         val selected = kotlin.math.abs(vehicleProfile.consumptionPer100Km - preset) < 0.01
                         FilterChip(
                             selected = selected,
@@ -171,19 +248,47 @@ fun VehicleSheet(
                     }
                 }
                 Text(
-                    "Aracının yol bilgisayarındaki ortalama değeri yazabilirsin.",
+                    if (isEv) {
+                        "Kışın ve 120 km/s üstünde tüketim %20-30 artar; uzun yolda buna göre yükselt."
+                    } else {
+                        "Aracının yol bilgisayarındaki ortalama değeri yazabilirsin."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextMuted
                 )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Depo hacmi", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+                Text(
+                    if (isEv) "Kullanılabilir batarya" else "Depo hacmi",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextSecondary
+                )
                 NumericField(
                     value = capacityText,
                     onValueChange = { if (isDecimalInput(it)) capacityText = it },
                     onCommit = ::commitCapacity,
-                    suffix = "litre"
+                    suffix = if (isEv) "kWh" else "litre"
+                )
+            }
+
+            if (isEv) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("En yüksek DC şarj gücü", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+                    NumericField(
+                        value = chargeKwText,
+                        onValueChange = { if (isDecimalInput(it)) chargeKwText = it },
+                        onCommit = ::commitChargeKw,
+                        suffix = "kW"
+                    )
+                }
+                ChoiceGroup(
+                    title = "Hızlı şarj soketi",
+                    hint = "Türkiye'de satılan araçların neredeyse tamamı CCS2 kullanır.",
+                    options = DcConnector.entries,
+                    selected = vehicleProfile.connector,
+                    label = { it.label },
+                    onSelect = { onUpdateProfile(vehicleProfile.copy(connector = it)) }
                 )
             }
 
@@ -199,8 +304,12 @@ fun VehicleSheet(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Gelişmiş ayarlar", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                         Text(
-                            "Rezerv %${vehicleProfile.reserveThresholdPercent.toInt()} · " +
-                                "Varışta ${vehicleProfile.arrivalFuel.label.lowercase()}",
+                            if (isEv) {
+                                "Şarj durağına en az %${vehicleProfile.reserveThresholdPercent.toInt()}"
+                            } else {
+                                "Rezerv %${vehicleProfile.reserveThresholdPercent.toInt()} · " +
+                                    "Varışta ${vehicleProfile.arrivalFuel.label.lowercase()}"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextMuted
                         )
@@ -215,36 +324,126 @@ fun VehicleSheet(
                 AnimatedVisibility(visible = showAdvanced) {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ChoiceGroup(
-                            title = "Rezerv payı",
-                            hint = "Depo bu seviyenin altına inmeden durak planlanır.",
+                            title = if (isEv) "Şarj durağına en az" else "Rezerv payı",
+                            hint = if (isEv) {
+                                "Şarj istasyonuna bataryada en az bu kadar kalmışken varılır."
+                            } else {
+                                "Depo bu seviyenin altına inmeden durak planlanır."
+                            },
                             options = listOf(10.0, 15.0, 20.0, 25.0),
                             selected = vehicleProfile.reserveThresholdPercent,
                             label = { "%${it.toInt()}" },
                             onSelect = { onUpdateProfile(vehicleProfile.copy(reserveThresholdPercent = it)) }
                         )
-                        ChoiceGroup(
-                            title = "Varışta depoda en az",
-                            hint = "Gideceğin yerde istasyon yoksa ya da pahalıysa yükselt; son durakta ona göre yakıt alınır.",
-                            options = ArrivalFuel.entries,
-                            selected = vehicleProfile.arrivalFuel,
-                            label = { it.label },
-                            onSelect = { onUpdateProfile(vehicleProfile.copy(arrivalFuel = it)) }
-                        )
+                        // Elektrikte varış hedefi planlama ekranındaki kaydırıcıdan seçilir.
+                        if (!isEv) {
+                            ChoiceGroup(
+                                title = "Varışta depoda en az",
+                                hint = "Gideceğin yerde istasyon yoksa ya da pahalıysa yükselt; son durakta ona göre yakıt alınır.",
+                                options = ArrivalFuel.entries,
+                                selected = vehicleProfile.arrivalFuel,
+                                label = { it.label },
+                                onSelect = { onUpdateProfile(vehicleProfile.copy(arrivalFuel = it)) }
+                            )
+                        }
                     }
                 }
             }
 
             Button(
                 onClick = {
-                    commitConsumption()
-                    commitCapacity()
+                    commitAll()
                     onDismiss()
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
             ) { Text("Tamam", style = MaterialTheme.typography.titleLarge) }
         }
+    }
+}
+
+/**
+ * Hazır elektrikli araç modelleri: yazdıkça süzülen açılır liste. Model seçilince batarya,
+ * tüketim ve şarj gücü doldurulur; "Listede yok" elle girişe bırakır.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EvModelPicker(
+    currentName: String,
+    onPick: (EvPreset?) -> Unit
+) {
+    var query by remember(currentName) { mutableStateOf(currentName) }
+    var expanded by remember { mutableStateOf(false) }
+    val matches = remember(query) {
+        val words = searchKey(query).split(' ').filter(String::isNotBlank)
+        EvPresets.all.filter { preset ->
+            // Seçili modelin tam adı yazılıyken tüm liste görünsün.
+            query == currentName || words.all { it in searchKey(preset.label) }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Araç modeli", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = {
+                    query = it
+                    expanded = true
+                },
+                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                singleLine = true,
+                placeholder = { Text("Marka ya da model yaz", color = TextMuted) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = SurfaceMuted,
+                    unfocusedContainerColor = SurfaceMuted,
+                    focusedBorderColor = Accent,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = Accent
+                )
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = CardSurface
+            ) {
+                matches.forEach { preset ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(preset.label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                                Text(
+                                    "${formatDecimal(preset.batteryKwh)} kWh · ${formatDecimal(preset.consumptionPer100Km)} kWh/100 km · " +
+                                        "${formatDecimal(preset.maxDcKw)} kW",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextMuted
+                                )
+                            }
+                        },
+                        onClick = {
+                            query = preset.label
+                            expanded = false
+                            onPick(preset)
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("Listede yok (değerleri elle gir)", color = Accent) },
+                    onClick = {
+                        expanded = false
+                        onPick(null)
+                    }
+                )
+            }
+        }
+        Text(
+            "Araç verileri: Open EV Data (MIT lisansı) ve üretici sayfaları. Değerleri değiştirebilirsin.",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextMuted
+        )
     }
 }
 
@@ -260,7 +459,7 @@ fun BrandSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = DarkSurface
+        containerColor = CardSurface
     ) {
         Column(
             modifier = Modifier
@@ -280,7 +479,7 @@ fun BrandSheet(
                     )
                 }
                 TextButton(onClick = onSelectAll, enabled = selectedBrands.isNotEmpty()) {
-                    Text("Temizle", color = if (selectedBrands.isEmpty()) TextMuted else AccentLime)
+                    Text("Temizle", color = if (selectedBrands.isEmpty()) TextMuted else Accent)
                 }
             }
 
@@ -308,7 +507,7 @@ fun BrandSheet(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
             ) { Text("Tamam", style = MaterialTheme.typography.titleLarge) }
         }
     }
@@ -343,11 +542,11 @@ private fun <T> ChoiceGroup(
 
 @Composable
 private fun chipColors() = FilterChipDefaults.filterChipColors(
-    containerColor = DarkSurfaceVariant,
+    containerColor = SurfaceMuted,
     labelColor = TextPrimary,
-    selectedContainerColor = AccentLime,
-    selectedLabelColor = Color.Black,
-    selectedLeadingIconColor = Color.Black
+    selectedContainerColor = Accent,
+    selectedLabelColor = OnAccent,
+    selectedLeadingIconColor = OnAccent
 )
 
 @Composable
@@ -372,11 +571,11 @@ private fun NumericField(
         keyboardActions = KeyboardActions(onDone = { onCommit() }),
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = DarkSurfaceVariant,
-            unfocusedContainerColor = DarkSurfaceVariant,
-            focusedBorderColor = AccentLime,
+            focusedContainerColor = SurfaceMuted,
+            unfocusedContainerColor = SurfaceMuted,
+            focusedBorderColor = Accent,
             unfocusedBorderColor = Color.Transparent,
-            cursorColor = AccentLime
+            cursorColor = Accent
         )
     )
 }
@@ -385,3 +584,13 @@ private fun isDecimalInput(value: String): Boolean =
     value.length <= 7 && value.matches(Regex("^\\d{0,4}([.,]\\d{0,2})?$"))
 
 private fun parseDecimal(value: String): Double? = value.replace(',', '.').toDoubleOrNull()
+
+/**
+ * Arama için büyük/küçük harf ve Türkçe i/ı farkını yok sayar: "id.4" yazan kullanıcı "ID.4"ü,
+ * "togg" yazan "TOGG"u bulur (Türkçe yerel ayarla "I" -> "ı" olduğu için düz lowercase yetmez).
+ */
+internal fun searchKey(text: String): String = text
+    .replace('İ', 'i').replace('I', 'i').replace('ı', 'i')
+    .lowercase(java.util.Locale.ROOT)
+    .replace("\u0307", "")
+    .trim()

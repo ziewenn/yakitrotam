@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.TripPlanResult
-import com.yakitrotam.app.ui.theme.DarkBackground
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.AppBackground
+import com.yakitrotam.app.ui.theme.SurfaceMuted
 import com.yakitrotam.app.ui.theme.TextSecondary
 
 /** Özet ekranındaki harita: gerçek harita üzerinde rota ve numaralı duraklar. */
@@ -30,7 +30,7 @@ fun RouteMiniMap(
             .fillMaxWidth()
             .height(250.dp)
             .clip(CardShape)
-            .background(DarkSurfaceVariant)
+            .background(SurfaceMuted)
     ) {
         RouteMap(tripResult = tripResult, modifier = Modifier.fillMaxSize())
 
@@ -40,7 +40,7 @@ fun RouteMiniMap(
             color = TextSecondary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .background(DarkBackground.copy(alpha = 0.7f), RoundedCornerShape(topStart = 8.dp))
+                .background(AppBackground.copy(alpha = 0.7f), RoundedCornerShape(topStart = 8.dp))
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }

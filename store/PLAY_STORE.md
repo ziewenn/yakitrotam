@@ -132,17 +132,17 @@ https://developers.google.com/admob/android/privacy/play-data-disclosure
 
 ## Adım 6. Ana mağaza girişi
 
-- Uygulama adı: `YakıtRotam: Yakıt Planlayıcı`
-- Kısa açıklama (77/80):
+- Uygulama adı: `YakıtRotam: Yakıt ve Şarj Planı`
+- Kısa açıklama (78/80):
 
 ```
-Rotanda nerede ve ne kadar yakıt alacağını güncel pompa fiyatlarıyla hesapla.
+Yakıtlı ya da elektrikli araçla rotanda nerede, ne kadar dolum yapacağını gör.
 ```
 
 - Tam açıklama:
 
 ```
-YakıtRotam, benzinli, dizel ve LPG'li araçlar için yol boyunca yakıt molası planlar.
+YakıtRotam, benzinli, dizel, LPG'li ve elektrikli araçlar için yol boyunca yakıt ve şarj molası planlar.
 
 Kalkış ve varış noktanı seç, deponun hacmini, ortalama tüketimini ve şu anki doluluğunu gir. Uygulama rotanı çizer, güzergah üzerindeki akaryakıt istasyonlarını bulur ve rezerve düşmeden nerede durman gerektiğini hesaplar.
 
@@ -156,6 +156,12 @@ Yolculuk özeti:
 - Pompada ödeyeceğin toplam tutar
 - Yolculuk boyunca yakılan yakıt ve 100 km başına maliyet
 
+Elektrikli araçlar için:
+- 68 hazır model ya da elle batarya, tüketim ve şarj gücü
+- Türkiye'deki halka açık DC hızlı şarj istasyonları, EPDK kayıtlarından
+- Her durakta varış ve çıkış şarj yüzdesi, şarj süresi, kW, eklenecek kWh ve operatörün liste fiyatıyla tutar
+- Yalnızca gereken kadar şarj; aracının soketine uymayan istasyon önerilmez
+
 Neden YakıtRotam?
 - İstasyonlar OpenStreetMap'teki gerçek kayıtlardan her rota için yeniden alınır.
 - Benzin, motorin ve LPG fiyatları il bazında günceldir; her durak kendi ilinin fiyatıyla hesaplanır.
@@ -168,7 +174,7 @@ Neden YakıtRotam?
 
 Hesap açman gerekmez. Değerler tahmindir; sürüş tarzı ve trafik sonucu değiştirebilir.
 
-Harita ve istasyon verileri © OpenStreetMap katkıcıları.
+Harita ve akaryakıt istasyonu verileri © OpenStreetMap katkıcıları. Şarj istasyonları: EPDK. Araç verileri: Open EV Data (MIT).
 ```
 
 - Uygulama simgesi: `icon-512.png`

@@ -21,7 +21,15 @@ data class GasStation(
     val osmType: String = "node",
     val osmId: Long? = null,
     val openingHours: String? = null,
-    val dataSource: String = "OpenStreetMap"
+    val dataSource: String = "OpenStreetMap",
+    /** Şarj istasyonu: CCS2 soketlerinin en yüksek gücü (kW); soket yoksa null. */
+    val ccsKw: Double? = null,
+    /** Şarj istasyonu: CHAdeMO soketlerinin en yüksek gücü (kW); soket yoksa null. */
+    val chademoKw: Double? = null,
+    /** Şarj istasyonu: kartta gösterilen soket özeti ("ZES · CCS 180 kW ×2 · AC 22 kW"). */
+    val chargeInfo: String? = null,
+    /** Şarj istasyonu: operatörün üyeliksiz DC liste fiyatı (TL/kWh); bilinmiyorsa null. */
+    val kwhPriceTL: Double? = null
 ) {
     val location: LatLng
         get() = LatLng(latitude, longitude)
@@ -34,6 +42,13 @@ data class GasStation(
         FuelType.BENZIN -> hasGasoline
         FuelType.DIZEL -> hasDiesel
         FuelType.LPG -> hasLpg
+        FuelType.ELEKTRIK -> ccsKw != null || chademoKw != null
+    }
+
+    /** Bu sokete uyan DC şarjın gücü (kW); istasyonda o soket yoksa null. */
+    fun dcKwFor(connector: DcConnector): Double? = when (connector) {
+        DcConnector.CCS2 -> ccsKw
+        DcConnector.CHADEMO -> chademoKw
     }
 
     /** `false` açıkça desteklenmediğini, `null` ise OSM'de bilginin olmadığını belirtir. */

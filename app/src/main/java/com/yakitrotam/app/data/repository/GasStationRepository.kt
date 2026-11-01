@@ -17,14 +17,13 @@ class GasStationRepository(
     private var cachedStations: List<GasStation> = initialStations
 
     /**
-     * Rota koridorundaki gerçek istasyonları indirir ve önbelleğe alır.
-     * Ağ erişilemezse önceki önbellek korunur (boşsa boş liste döner).
+     * Rota koridorundaki gerçek istasyonları indirir; motor bunları [getAllStations] ile okur.
+     * İstasyon kaynağına ulaşılamazsa null döner. Önceki rotanın istasyonları yeni rotaya
+     * taşınmaz: başka koridorun istasyonları burada işe yaramaz.
      */
-    suspend fun loadStationsAlongRoute(routePoints: List<LatLng>): List<GasStation> {
-        val fetched = remoteSource.fetchAlongRoute(routePoints)
-        if (fetched.isNotEmpty()) {
-            cachedStations = fetched.distinctBy { it.id }
-        }
+    suspend fun loadStationsAlongRoute(routePoints: List<LatLng>): List<GasStation>? {
+        val fetched = remoteSource.fetchAlongRoute(routePoints) ?: return null
+        cachedStations = fetched.distinctBy { it.id }
         return cachedStations
     }
 

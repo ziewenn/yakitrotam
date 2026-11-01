@@ -117,7 +117,7 @@ fun RouteMap(
             mapView.keepGesturesInside()
             mapView.getMapAsync { map ->
                 map.basicSettings()
-                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyle))
+                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyleLight))
             }
             mapView
         },
@@ -140,7 +140,7 @@ private fun drawTrip(view: MapView, map: MapLibreMap, style: Style, trip: TripPl
         )
         style.addLayer(
             LineLayer("route", "route").withProperties(
-                PropertyFactory.lineColor("#9EFF3D"),
+                PropertyFactory.lineColor("#0B7A6C"),
                 PropertyFactory.lineWidth(5f),
                 PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
@@ -149,8 +149,8 @@ private fun drawTrip(view: MapView, map: MapLibreMap, style: Style, trip: TripPl
     }
 
     val features = buildList {
-        add(pointFeature(trip.origin.latLng, "#34E39B", ""))
-        add(pointFeature(trip.destination.latLng, "#FF4D4D", ""))
+        add(pointFeature(trip.origin.latLng, "#13803F", ""))
+        add(pointFeature(trip.destination.latLng, "#C62828", ""))
         trip.stops.forEach { stop ->
             add(
                 pointFeature(
@@ -231,7 +231,7 @@ fun PickerMap(
                     .target(initialCenter?.let { MapLatLng(it.latitude, it.longitude) } ?: TURKEY_CENTER)
                     .zoom(if (initialCenter != null) 13.0 else 5.2)
                     .build()
-                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyle))
+                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyleLight))
                 map.addOnCameraIdleListener {
                     map.cameraPosition.target?.let { onCenterChanged(LatLng(it.latitude, it.longitude)) }
                 }

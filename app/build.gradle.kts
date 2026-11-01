@@ -97,6 +97,8 @@ android {
         buildConfig = true
     }
     testOptions {
+        // Yerel testlerde android.util.Log çağrıları sessizce geçsin (istasyon kaynağı hata loglar).
+        unitTests.isReturnDefaultValues = true
         unitTests.all {
             it.testLogging { showStandardStreams = true }
         }
@@ -139,6 +141,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Android'in org.json'u yerel testte boş gövdedir; istasyon dosyası ayrıştırıcısı gerçeğiyle denenir.
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

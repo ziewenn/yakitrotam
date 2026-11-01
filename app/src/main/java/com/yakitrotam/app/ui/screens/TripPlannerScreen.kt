@@ -67,16 +67,19 @@ import com.yakitrotam.app.data.model.VehicleProfile
 import com.yakitrotam.app.ui.components.BrandSheet
 import com.yakitrotam.app.ui.components.FuelLevelCard
 import com.yakitrotam.app.notify.PriceWatch
+import com.yakitrotam.app.ui.components.BatteryCard
 import com.yakitrotam.app.ui.components.FuelPriceStrip
+import com.yakitrotam.app.ui.components.VehicleCard
 import com.yakitrotam.app.ui.components.PlaceSearchDialog
 import com.yakitrotam.app.ui.components.SettingRow
 import com.yakitrotam.app.ui.components.SurfaceCard
 import com.yakitrotam.app.ui.components.VehicleSheet
 import com.yakitrotam.app.ui.components.formatDecimal
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBackground
-import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurfaceVariant
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.theme.OnAccent
+import com.yakitrotam.app.ui.theme.AppBackground
+import com.yakitrotam.app.ui.theme.BorderColor
+import com.yakitrotam.app.ui.theme.SurfaceMuted
 import com.yakitrotam.app.ui.theme.ReserveRed
 import com.yakitrotam.app.ui.theme.SafeGreen
 import com.yakitrotam.app.ui.theme.TextMuted
@@ -157,7 +160,7 @@ fun TripPlannerScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
+    Box(modifier = modifier.fillMaxSize().background(AppBackground)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -173,6 +176,11 @@ fun TripPlannerScreen(
                 modifier = Modifier.padding(top = 12.dp, start = 4.dp, bottom = 4.dp)
             )
 
+            VehicleCard(
+                vehicleProfile = uiState.vehicleProfile,
+                onClick = { showVehicleSheet = true }
+            )
+
             RouteCard(
                 origin = uiState.origin.name,
                 destination = uiState.destination.name,
@@ -183,41 +191,43 @@ fun TripPlannerScreen(
                 onRequestLocation = requestLocation
             )
 
-            FuelLevelCard(
-                vehicleProfile = uiState.vehicleProfile,
-                onLevelChange = { onUpdateProfile(uiState.vehicleProfile.copy(currentLevelPercent = it)) }
-            )
+            if (uiState.vehicleProfile.isElectric) {
+                BatteryCard(vehicleProfile = uiState.vehicleProfile, onUpdate = onUpdateProfile)
 
-            SurfaceCard(padding = 0.dp, spacing = 0.dp) {
-                SettingRow(
-                    icon = Icons.Default.DirectionsCar,
-                    title = "Aracım",
-                    summary = with(uiState.vehicleProfile) {
-                        "${fuelType.shortName()} · ${formatDecimal(consumptionPer100Km)} L/100 km · " +
-                            "${formatDecimal(tankCapacityLiters)} L depo"
-                    },
-                    onClick = { showVehicleSheet = true }
+                Text(
+                    "Şarj istasyonları EPDK kayıtlarından alınır. Yalnızca DC hızlı şarj planlanır; " +
+                        "fiyatlar operatörlerin üyeliksiz liste fiyatıdır.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
-                HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(start = 52.dp))
-                SettingRow(
-                    icon = Icons.Default.LocalGasStation,
-                    title = "Marka tercihi",
-                    summary = if (uiState.selectedBrands.isEmpty()) {
-                        "Tüm markalar"
-                    } else {
-                        uiState.selectedBrands.joinToString(", ") { it.displayName }
-                    },
-                    onClick = { showBrandSheet = true }
+            } else {
+                FuelLevelCard(
+                    vehicleProfile = uiState.vehicleProfile,
+                    onLevelChange = { onUpdateProfile(uiState.vehicleProfile.copy(currentLevelPercent = it)) }
+                )
+
+                SurfaceCard(padding = 0.dp, spacing = 0.dp) {
+                    SettingRow(
+                        icon = Icons.Default.LocalGasStation,
+                        title = "Marka tercihi",
+                        summary = if (uiState.selectedBrands.isEmpty()) {
+                            "Tüm markalar"
+                        } else {
+                            uiState.selectedBrands.joinToString(", ") { it.displayName }
+                        },
+                        onClick = { showBrandSheet = true }
+                    )
+                }
+
+                FuelPriceStrip(
+                    snapshot = uiState.livePrice,
+                    selectedFuelType = uiState.vehicleProfile.fuelType,
+                    priceAlertsEnabled = priceAlertsEnabled,
+                    onTogglePriceAlerts = togglePriceAlerts,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
-
-            FuelPriceStrip(
-                snapshot = uiState.livePrice,
-                selectedFuelType = uiState.vehicleProfile.fuelType,
-                priceAlertsEnabled = priceAlertsEnabled,
-                onTogglePriceAlerts = togglePriceAlerts,
-                modifier = Modifier.padding(top = 4.dp)
-            )
 
             // Sabit alt panel (buton + banner reklam) son içeriği örtmesin.
             Spacer(Modifier.height(if (uiState.errorMessage != null) 250.dp else 170.dp))
@@ -227,7 +237,7 @@ fun TripPlannerScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, DarkBackground, DarkBackground)))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, AppBackground, AppBackground)))
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -240,14 +250,14 @@ fun TripPlannerScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentLime,
-                    contentColor = Color.Black,
-                    disabledContainerColor = DarkSurfaceVariant,
+                    containerColor = Accent,
+                    contentColor = OnAccent,
+                    disabledContainerColor = SurfaceMuted,
                     disabledContentColor = TextPrimary
                 )
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(Modifier.size(18.dp), color = AccentLime, strokeWidth = 2.dp)
+                    CircularProgressIndicator(Modifier.size(18.dp), color = Accent, strokeWidth = 2.dp)
                     Spacer(Modifier.width(12.dp))
                     Text(
                         uiState.loadingStep.ifBlank { "Hesaplanıyor..." },
@@ -350,14 +360,14 @@ private fun RouteCard(
                     trailing = {
                         IconButton(onClick = onRequestLocation, enabled = !isLocationLoading) {
                             if (isLocationLoading) {
-                                CircularProgressIndicator(Modifier.size(18.dp), color = AccentLime, strokeWidth = 2.dp)
+                                CircularProgressIndicator(Modifier.size(18.dp), color = Accent, strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Default.MyLocation, "Konumumu kullan", tint = AccentLime)
+                                Icon(Icons.Default.MyLocation, "Konumumu kullan", tint = Accent)
                             }
                         }
                     }
                 )
-                HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(start = 14.dp))
+                HorizontalDivider(color = BorderColor, modifier = Modifier.padding(start = 14.dp))
                 LocationRow(label = "Nereye", value = destination, onClick = onDestinationClick)
             }
 
@@ -367,7 +377,7 @@ private fun RouteCard(
                     .padding(horizontal = 10.dp)
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(DarkSurfaceVariant)
+                    .background(SurfaceMuted)
             ) {
                 Icon(Icons.Default.SwapVert, "Kalkış ve varışı değiştir", tint = TextPrimary)
             }
@@ -411,7 +421,7 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF3A1A1D))
+            .background(Color(0xFFFDECEC))
             .padding(start = 14.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)

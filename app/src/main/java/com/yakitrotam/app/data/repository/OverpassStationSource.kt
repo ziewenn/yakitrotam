@@ -39,7 +39,9 @@ class OverpassStationSource(
     /** null ise güncel sunucu listesi her sorguda [Endpoints]'ten okunur. */
     private val fixedEndpoints: List<String>? = null,
     /** Hazır listenin diskteki kopyası; null ise yalnızca bellekte tutulur. */
-    private val datasetCache: File? = null
+    private val datasetCache: File? = null,
+    /** Hazır listenin adresi; şarj istasyonları için [Endpoints.chargers]. */
+    private val datasetUrl: () -> String = { Endpoints.stations }
 ) {
     private val endpoints: List<String>
         get() = fixedEndpoints ?: Endpoints.overpass
@@ -70,7 +72,7 @@ class OverpassStationSource(
         if (cacheIsFresh) readCache()?.let { dataset = it; return it }
 
         val body = try {
-            val request = Request.Builder().url(Endpoints.stations).header("User-Agent", USER_AGENT).build()
+            val request = Request.Builder().url(datasetUrl()).header("User-Agent", USER_AGENT).build()
             httpClient.newBuilder().readTimeout(20, TimeUnit.SECONDS).build()
                 .newCall(request).execute().use { if (it.isSuccessful) it.body?.string() else null }
         } catch (e: IOException) {
@@ -84,16 +86,21 @@ class OverpassStationSource(
     }
 
     /**
-     * Rota koridorundaki tüm akaryakıt istasyonlarını getirir: önce hazır listeden,
-     * ona ulaşılamazsa canlı Overpass sorgusuyla.
+     * Rota koridorundaki tüm istasyonları getirir: önce hazır listeden, ona ulaşılamazsa canlı
+     * Overpass sorgusuyla. Kaynaklara hiç ulaşılamadıysa null döner; boş liste "bu rotada istasyon
+     * yok" demektir (canlı yedeği olmayan şarj kaynağında olabilir).
      */
-    suspend fun fetchAlongRoute(routePoints: List<LatLng>): List<GasStation> {
+    suspend fun fetchAlongRoute(routePoints: List<LatLng>): List<GasStation>? {
         if (routePoints.isEmpty()) return emptyList()
 
-        withContext(Dispatchers.IO) { loadDataset() }
-            ?.let { all -> stationsInCorridor(all, routePoints) }
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { return it }
+        val dataset = withContext(Dispatchers.IO) { loadDataset() }
+        if (dataset != null) {
+            val corridor = stationsInCorridor(dataset, routePoints)
+            // Şarj istasyonlarının canlı yedeği yok (OSM'de Türkiye'nin şarj verisi çok eksik):
+            // liste geldiyse koridorun boş olması gerçek sonuçtur.
+            if (corridor.isNotEmpty() || endpoints.isEmpty()) return corridor
+        }
+        if (endpoints.isEmpty()) return null
 
         val query = buildCorridorQuery(routePoints)
         // Aynı rota farklı depo seviyesiyle yeniden hesaplanınca ağa hiç çıkılmaz.
@@ -108,11 +115,10 @@ class OverpassStationSource(
             stations = queryOverpass(query)
         }
 
-        if (stations.isNotEmpty()) {
-            synchronized(this) {
-                lastQuery = query
-                lastStations = stations
-            }
+        if (stations.isEmpty()) return null
+        synchronized(this) {
+            lastQuery = query
+            lastStations = stations
         }
         return stations
     }
@@ -172,7 +178,7 @@ class OverpassStationSource(
     private var lastQuery: String? = null
     private var lastStations: List<GasStation> = emptyList()
 
-    private fun parseElements(body: String): List<GasStation> {
+    internal fun parseElements(body: String): List<GasStation> {
         val elements = JSONObject(body).optJSONArray("elements") ?: return emptyList()
         val stations = ArrayList<GasStation>(elements.length())
 
@@ -212,12 +218,20 @@ class OverpassStationSource(
                     is24Hours = openingHours?.let { it.contains("24/7") },
                     osmType = osmType,
                     osmId = osmId,
-                    openingHours = openingHours
+                    openingHours = openingHours,
+                    dataSource = if (osmType == "epdk") "EPDK" else "OpenStreetMap",
+                    ccsKw = tags.positiveDouble("charge:ccs_kw"),
+                    chademoKw = tags.positiveDouble("charge:chademo_kw"),
+                    chargeInfo = tags.optString("charge:info").takeIf { it.isNotBlank() },
+                    kwhPriceTL = tags.positiveDouble("charge:price")
                 )
             )
         }
         return stations
     }
+
+    private fun JSONObject.positiveDouble(key: String): Double? =
+        optString(key).replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
 
     private fun JSONObject.yesNo(key: String): Boolean? = when (optString(key).lowercase()) {
         "" -> null

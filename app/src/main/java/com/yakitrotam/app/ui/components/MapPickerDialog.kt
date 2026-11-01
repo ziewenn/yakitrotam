@@ -43,10 +43,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.yakitrotam.app.data.model.CityLocation
 import com.yakitrotam.app.data.model.LatLng
-import com.yakitrotam.app.ui.theme.AccentLime
-import com.yakitrotam.app.ui.theme.DarkBackground
-import com.yakitrotam.app.ui.theme.DarkBorder
-import com.yakitrotam.app.ui.theme.DarkSurface
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.theme.OnAccent
+import com.yakitrotam.app.ui.theme.AppBackground
+import com.yakitrotam.app.ui.theme.BorderColor
+import com.yakitrotam.app.ui.theme.CardSurface
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
 import com.yakitrotam.app.ui.theme.TextSecondary
@@ -73,7 +74,7 @@ fun MapPickerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
+        Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
             PickerMap(
                 initialCenter = initialCenter,
                 onCenterChanged = { center = it },
@@ -84,7 +85,7 @@ fun MapPickerDialog(
             Icon(
                 Icons.Default.Place,
                 contentDescription = null,
-                tint = AccentLime,
+                tint = Accent,
                 modifier = Modifier.align(Alignment.Center).size(48.dp).offset(y = (-22).dp)
             )
             Box(
@@ -93,14 +94,14 @@ fun MapPickerDialog(
                     .size(6.dp)
                     .clip(CircleShape)
                     .background(Color.Black)
-                    .border(1.5.dp, AccentLime, CircleShape)
+                    .border(1.5.dp, Accent, CircleShape)
             )
 
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
-                    .background(DarkBackground.copy(alpha = 0.88f))
+                    .background(AppBackground.copy(alpha = 0.88f))
                     .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -125,7 +126,7 @@ fun MapPickerDialog(
                     .navigationBarsPadding()
                     .padding(16.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurface)
+                    .background(CardSurface)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -152,10 +153,10 @@ fun MapPickerDialog(
                     enabled = center != null && !isResolving,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentLime, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
                 ) {
                     if (isResolving) {
-                        CircularProgressIndicator(Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), color = OnAccent, strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
                         Text("Adres bulunuyor...", style = MaterialTheme.typography.titleMedium)
                     } else {

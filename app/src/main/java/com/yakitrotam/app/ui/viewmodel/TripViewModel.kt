@@ -12,6 +12,7 @@ import com.yakitrotam.app.data.repository.PriceTable
 import com.yakitrotam.app.data.repository.RouteRepository
 import com.yakitrotam.app.data.repository.SavedTripState
 import com.yakitrotam.app.data.repository.TripPreferences
+import com.yakitrotam.app.domain.EvChargePlanner
 import com.yakitrotam.app.domain.FuelOptimizerEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -51,7 +52,10 @@ class TripViewModel(
     private val fuelPriceRepository: FuelPriceRepository = FuelPriceRepository(),
     private val preferences: TripPreferences? = null,
     /** Sorunsuz bir plan çıkarıldığında çağrılır (puanlama istemi sayacı için). */
-    private val onPlanReady: () -> Unit = {}
+    private val onPlanReady: () -> Unit = {},
+    /** Elektrikli araç için şarj istasyonları ve şarj planlayıcısı. */
+    private val evStationRepository: GasStationRepository = GasStationRepository(),
+    private val evPlanner: EvChargePlanner = EvChargePlanner(evStationRepository)
 ) : ViewModel() {
 
     val popularCities: List<CityLocation> = routeRepository.popularCities
@@ -146,7 +150,19 @@ class TripViewModel(
     }
 
     fun updateVehicleProfile(profile: VehicleProfile) {
-        _uiState.update { it.copy(vehicleProfile = profile) }
+        val current = _uiState.value.vehicleProfile
+        val next = if (profile.isElectric == current.isElectric) {
+            profile
+        } else {
+            // Elektrik ile yakıt arasında geçiş: litre ve kWh karışmasın diye diğer aracın kayıtlı
+            // profili geri gelir, şimdiki araç saklanır. Seçilen yakıt türü uygulanır.
+            val restored = saved.otherVehicle?.takeIf { it.isElectric == profile.isElectric }
+                ?: if (profile.isElectric) VehicleProfile.EV_DEFAULT else VehicleProfile()
+            // Saklanan araç, sayfada henüz kaydedilmemiş son değerleri de içersin.
+            saved = saved.copy(otherVehicle = profile.copy(fuelType = current.fuelType))
+            restored.copy(fuelType = profile.fuelType)
+        }
+        _uiState.update { it.copy(vehicleProfile = next, tripResult = null) }
     }
 
     fun toggleBrand(brand: FuelBrand) {
@@ -254,11 +270,22 @@ class TripViewModel(
                     return@launch
                 }
 
-                _uiState.update { it.copy(loadingStep = "Güzergahtaki istasyonlar ve fiyatlar alınıyor...") }
+                val isEv = currentState.vehicleProfile.isElectric
+                _uiState.update {
+                    it.copy(
+                        loadingStep = if (isEv) {
+                            "Güzergahtaki şarj istasyonları alınıyor..."
+                        } else {
+                            "Güzergahtaki istasyonlar ve fiyatlar alınıyor..."
+                        }
+                    )
+                }
 
                 // İstasyonlar ve fiyatlar birbirinden bağımsız; paralel çekilir.
                 val (stations, priceSnapshot) = coroutineScope {
-                    val stationsJob = async { stationRepository.loadStationsAlongRoute(routePoints) }
+                    val stationsJob = async {
+                        (if (isEv) evStationRepository else stationRepository).loadStationsAlongRoute(routePoints)
+                    }
                     val priceJob = async {
                         priceTable = fuelPriceRepository.getTable()
                         fuelPriceRepository.getPrices(currentState.origin.latLng)
@@ -266,24 +293,41 @@ class TripViewModel(
                     stationsJob.await() to priceJob.await()
                 }
 
-                if (stations.isEmpty()) {
+                // Yakıtta boş liste de hatadır (her güzergahta istasyon vardır); elektrikte boş liste
+                // "bu yolda DC şarj yok" demektir, motor bunu uyarıyla anlatır.
+                if (stations == null || (!isEv && stations.isEmpty())) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             loadingStep = "",
-                            errorMessage = "İstasyon verisi alınamadı (OpenStreetMap'e ulaşılamadı). " +
-                                "İnternet bağlantınızı kontrol edip tekrar deneyin."
+                            errorMessage = if (isEv) {
+                                "Bu güzergah için şarj istasyonu listesi alınamadı. " +
+                                    "İnternet bağlantını kontrol edip tekrar dene."
+                            } else {
+                                "İstasyon verisi alınamadı (OpenStreetMap'e ulaşılamadı). " +
+                                    "İnternet bağlantınızı kontrol edip tekrar deneyin."
+                            }
                         )
                     }
                     return@launch
                 }
 
-                _uiState.update { it.copy(loadingStep = "Duraklar hesaplanıyor...") }
+                _uiState.update {
+                    it.copy(loadingStep = if (isEv) "Şarj durakları hesaplanıyor..." else "Duraklar hesaplanıyor...")
+                }
 
                 forcedStops = emptyMap()
                 // Motor, adayların gerçek yol sapması için ağ çağrısı yapar; IO iş parçacığında çalışır.
                 val result = withContext(Dispatchers.IO) {
-                    optimizerEngine.calculateTripPlan(
+                    if (isEv) evPlanner.calculateTripPlan(
+                        origin = currentState.origin,
+                        destination = currentState.destination,
+                        routePoints = routePoints,
+                        vehicleProfile = currentState.vehicleProfile,
+                        fuelPrice = priceSnapshot,
+                        detourResolver = detourResolver,
+                        routeDurationMinutes = route.durationMinutes
+                    ) else optimizerEngine.calculateTripPlan(
                         origin = currentState.origin,
                         destination = currentState.destination,
                         routePoints = routePoints,
@@ -342,7 +386,16 @@ class TripViewModel(
 
         viewModelScope.launch {
             val updated = withContext(Dispatchers.IO) {
-                optimizerEngine.calculateTripPlan(
+                if (trip.isEv) evPlanner.calculateTripPlan(
+                    origin = trip.origin,
+                    destination = trip.destination,
+                    routePoints = trip.routePoints,
+                    vehicleProfile = trip.vehicleProfile,
+                    fuelPrice = trip.fuelPrice,
+                    forcedStationIds = forcedStops,
+                    detourResolver = detourResolver,
+                    routeDurationMinutes = trip.routeDurationMinutes
+                ) else optimizerEngine.calculateTripPlan(
                     origin = trip.origin,
                     destination = trip.destination,
                     routePoints = trip.routePoints,

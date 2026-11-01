@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yakitrotam.app.data.model.FuelPriceSnapshot
 import com.yakitrotam.app.data.model.FuelType
-import com.yakitrotam.app.ui.theme.AccentLime
+import com.yakitrotam.app.ui.theme.Accent
 import com.yakitrotam.app.ui.theme.FuelAmber
 import com.yakitrotam.app.ui.theme.TextMuted
 import com.yakitrotam.app.ui.theme.TextPrimary
@@ -58,7 +58,7 @@ fun FuelPriceStrip(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            val alertColor = if (priceAlertsEnabled) AccentLime else TextSecondary
+            val alertColor = if (priceAlertsEnabled) Accent else TextSecondary
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -81,7 +81,7 @@ fun FuelPriceStrip(
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            FuelType.entries.forEach { fuelType ->
+            FuelType.entries.filterNot { it.isElectric }.forEach { fuelType ->
                 val isSelected = fuelType == selectedFuelType
                 val estimated = snapshot?.isEstimated(fuelType) == true
                 Column {

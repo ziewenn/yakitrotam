@@ -35,11 +35,17 @@ object Endpoints {
     /** Tüm Türkiye istasyon listesi (tools/build_stations.py çıktısı). */
     @Volatile var stations: String = "https://ziewenn.github.io/yakitrotam/stations.json"
         private set
+    /** Halka açık DC şarj istasyonları, EPDK verisinden (tools/build_chargers.py çıktısı). */
+    @Volatile var chargers: String = "https://ziewenn.github.io/yakitrotam/chargers.json"
+        private set
     @Volatile var nominatim: String = "https://nominatim.openstreetmap.org"
         private set
     @Volatile var photon: String = "https://photon.komoot.io"
         private set
     @Volatile var mapStyle: String = "https://tiles.openfreemap.org/styles/dark"
+        private set
+    /** Açık tema harita stili. Eski sürümler [mapStyle]'ı okuduğu için ayrı anahtar. */
+    @Volatile var mapStyleLight: String = "https://tiles.openfreemap.org/styles/positron"
         private set
 
     /** Açılışta çağrılır: önce son indirilen ayar uygulanır, güncel olanı arka planda çekilir. */
@@ -76,6 +82,8 @@ object Endpoints {
         config["photon"].url()?.let { photon = it }
         config["mapStyle"].url()?.let { mapStyle = it }
         config["stations"].url()?.let { stations = it }
+        config["chargers"].url()?.let { chargers = it }
+        config["mapStyleLight"].url()?.let { mapStyleLight = it }
         runCatching { config["overpass"]?.jsonArray?.mapNotNull { it.url() } }.getOrNull()
             ?.takeIf { it.isNotEmpty() }
             ?.let { overpass = it }

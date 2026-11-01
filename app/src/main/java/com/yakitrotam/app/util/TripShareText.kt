@@ -12,11 +12,52 @@ import java.util.Locale
 object TripShareText {
     private val turkish: Locale = Locale.forLanguageTag("tr")
 
-    fun build(trip: TripPlanResult): String = buildString {
+    fun build(trip: TripPlanResult): String = if (trip.isEv) buildEv(trip) else buildFuel(trip)
+
+    /** Elektrikli araç planı: litre yerine kWh, pompa yerine şarj, varış/çıkış yüzdeleri. */
+    private fun buildEv(trip: TripPlanResult): String = buildString {
+        appendLine("YakıtRotam şarj planı")
+        appendLine("${trip.origin.name} → ${trip.destination.name}")
+        append("${trip.totalDistanceKm.toInt()} km · yaklaşık ${duration(trip.estimatedDrivingTimeMinutes)} · ")
+        appendLine(if (trip.hasStops) "${trip.stopsCount} şarj molası" else "şarj molası gerekmiyor")
+        appendLine()
+
+        trip.stops.forEach { stop ->
+            val place = listOf(stop.station.city).filter(String::isNotBlank).joinToString()
+            append("${stop.stopIndex}. ${stop.station.name}")
+            if (place.isNotBlank()) append(" ($place)")
+            appendLine(" · ${stop.distanceFromOriginKm.toInt()}. km")
+            val departure = (stop.departurePercent ?: 0.0).toInt()
+            val minutes = (stop.chargeMinutes ?: 0.0).toInt()
+            appendLine(
+                "   Varışta %${stop.arrivalFuelLevelPercent.toInt()}, %$departure seviyesine kadar şarj: " +
+                    "+${decimal(stop.refuelLiters)} kWh, ~$minutes dk, ~${money(stop.estimatedRefuelCostTL)}"
+            )
+            appendLine("   ${pointUrl(stop.station.latitude, stop.station.longitude)}")
+        }
+
+        if (trip.hasStops) {
+            appendLine()
+            appendLine("Şarjda toplam: ~${money(trip.totalRefuelCostTL)}")
+        }
+        appendLine("Varışta bataryada ~%${trip.arrivalFuelPercent.toInt()} kalır.")
+        appendLine("Tüm rota ve duraklar: ${routeUrl(trip)}")
+        appendLine()
+        append("Şarj istasyonları: EPDK. Fiyatlar operatörlerin liste fiyatlarına göre tahminidir.")
+    }
+
+    private fun duration(totalMinutes: Int): String {
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return if (hours > 0) "$hours sa $minutes dk" else "$minutes dk"
+    }
+
+    private fun buildFuel(trip: TripPlanResult): String = buildString {
         val fuelName = when (trip.vehicleProfile.fuelType) {
             FuelType.BENZIN -> "benzin"
             FuelType.DIZEL -> "motorin"
             FuelType.LPG -> "LPG"
+            FuelType.ELEKTRIK -> "şarj"
         }
         val hours = trip.estimatedDrivingTimeMinutes / 60
         val minutes = trip.estimatedDrivingTimeMinutes % 60
@@ -69,6 +110,6 @@ object TripShareText {
             "&travelmode=driving"
         if (!trip.hasStops) return base
         return base + "&waypoints=" +
-            enc(trip.stops.joinToString("|") { coord(it.station.latitude, it.station.longitude) })
+            enc(trip.mapsWaypoints.joinToString("|") { coord(it.station.latitude, it.station.longitude) })
     }
 }

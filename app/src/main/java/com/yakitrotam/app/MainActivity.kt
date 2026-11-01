@@ -26,7 +26,7 @@ import com.yakitrotam.app.data.repository.TripPreferences
 import com.yakitrotam.app.domain.FuelOptimizerEngine
 import com.yakitrotam.app.ui.screens.RouteSummaryScreen
 import com.yakitrotam.app.ui.screens.TripPlannerScreen
-import com.yakitrotam.app.ui.theme.DarkBackground
+import com.yakitrotam.app.ui.theme.AppBackground
 import com.yakitrotam.app.ui.theme.YakitRotamTheme
 import com.yakitrotam.app.ui.viewmodel.TripViewModel
 import com.yakitrotam.app.util.ReviewPrompt
@@ -51,18 +51,28 @@ class MainActivity : ComponentActivity() {
                     locationService = locationService,
                     fuelPriceRepository = FuelPriceRepository(),
                     preferences = TripPreferences(applicationContext),
-                    onPlanReady = { ReviewPrompt.recordPlan(applicationContext) }
+                    onPlanReady = { ReviewPrompt.recordPlan(applicationContext) },
+                    // Şarj istasyonlarının canlı yedeği yok: yalnızca EPDK'dan üretilen hazır liste.
+                    evStationRepository = GasStationRepository(
+                        OverpassStationSource(
+                            fixedEndpoints = emptyList(),
+                            datasetCache = File(cacheDir, "chargers.json"),
+                            datasetUrl = { Endpoints.chargers }
+                        )
+                    )
                 ) as T
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Android 15+ hedeflenince uygulama kenardan kenara çizilir; koyu tema için
-        // sistem çubuk simgeleri açık renkte tutulur.
+        // Android 15+ hedeflenince uygulama kenardan kenara çizilir; açık tema için
+        // sistem çubuk simgeleri koyu renkte tutulur.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, SYSTEM_BAR_DARK_SCRIM),
+            // Android 8 öncesi koyu gezinme simgesi çizemez; o sürümlerde bu yarı saydam koyu zemin
+            // kullanılır, yoksa beyaz simgeler açık zeminde kaybolur.
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, SYSTEM_BAR_DARK_SCRIM)
         )
         super.onCreate(savedInstanceState)
         Endpoints.init(this)
@@ -74,7 +84,7 @@ class MainActivity : ComponentActivity() {
             YakitRotamTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = DarkBackground
+                    color = AppBackground
                 ) {
                     val uiState by viewModel.uiState.collectAsState()
 
@@ -118,3 +128,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/** androidx.activity'nin kendi varsayılan koyu zemini (#801B1B1B). */
+private val SYSTEM_BAR_DARK_SCRIM = Color.argb(0x80, 0x1b, 0x1b, 0x1b)

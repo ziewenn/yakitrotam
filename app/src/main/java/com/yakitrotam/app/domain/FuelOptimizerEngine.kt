@@ -288,14 +288,7 @@ class FuelOptimizerEngine(
         if (pool.isEmpty()) return emptyList()
 
         val roadDetours = detourResolver?.let { resolver ->
-            // Tüm adayları kapsayan iki rota noktası: sapma bu ikisi arasındaki farktan ölçülür.
-            val startKm = (pool.minOf { it.alongKm } - DETOUR_ANCHOR_MARGIN_KM).coerceAtLeast(fromKm)
-            val endKm = (pool.maxOf { it.alongKm } + DETOUR_ANCHOR_MARGIN_KM).coerceAtMost(totalDistanceKm)
-            resolver.resolve(
-                from = GeoUtils.findPointAtDistance(routePoints, startKm),
-                to = GeoUtils.findPointAtDistance(routePoints, endKm),
-                stations = pool.map { it.station.location }
-            )
+            resolveRoadDetours(resolver, routePoints, fromKm, totalDistanceKm, pool.map { it.alongKm to it.station.location })
         }
 
         return pool.mapIndexedNotNull { index, candidate ->
@@ -356,9 +349,6 @@ class FuelOptimizerEngine(
         /** En iyi adayın gerçek ek yolu bunu aşıyorsa daha erken istasyonlara da bakılır. */
         const val WIDEN_IF_EXTRA_KM = 3.0
 
-        /** Sapma ölçümünde adayların önüne ve arkasına bırakılan rota payı. */
-        const val DETOUR_ANCHOR_MARGIN_KM = 2.0
-
         const val MAX_ALTERNATIVES = 3
 
         /** Son dolumda varış ihtiyacının üzerine bırakılan güvenlik payı. */
@@ -374,3 +364,28 @@ class FuelOptimizerEngine(
         const val NON_PREFERRED_BRAND_PENALTY = 45.0
     }
 }
+
+/**
+ * Adayların gerçek yol sapmasını tek yol sorgusuyla çözer (yakıt ve şarj planlayıcısı ortak kullanır).
+ * [candidates]: rota üzerindeki km ve istasyon konumu. Tüm adayları kapsayan iki rota noktası
+ * arasından ölçülür; servis cevap vermezse null döner.
+ */
+internal fun resolveRoadDetours(
+    resolver: DetourResolver,
+    routePoints: List<LatLng>,
+    fromKm: Double,
+    totalDistanceKm: Double,
+    candidates: List<Pair<Double, LatLng>>
+): List<RoadDetour?>? {
+    if (candidates.isEmpty()) return emptyList()
+    val startKm = (candidates.minOf { it.first } - DETOUR_ANCHOR_MARGIN_KM).coerceAtLeast(fromKm)
+    val endKm = (candidates.maxOf { it.first } + DETOUR_ANCHOR_MARGIN_KM).coerceAtMost(totalDistanceKm)
+    return resolver.resolve(
+        from = GeoUtils.findPointAtDistance(routePoints, startKm),
+        to = GeoUtils.findPointAtDistance(routePoints, endKm),
+        stations = candidates.map { it.second }
+    )
+}
+
+/** Sapma ölçümünde adayların önüne ve arkasına bırakılan rota payı. */
+private const val DETOUR_ANCHOR_MARGIN_KM = 2.0

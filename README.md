@@ -2,12 +2,10 @@ Türkçe | [English](README.en.md)
 
 # YakıtRotam
 
-İçten yanmalı araçlar için yakıt durağı planlayıcı. Deponuzun hacmini, ortalama
-tüketiminizi ve anlık doluluk oranını girersiniz; uygulama güzergah üzerinde
-rezerve düşmeden nerede yakıt almanız gerektiğini hesaplar ve rotayı duraklarla
-birlikte Google Maps'e aktarır.
-
-Elektrikli araçlardaki ABRP mantığının benzin, motorin ve LPG karşılığı.
+Yol boyunca yakıt ve şarj durağı planlayıcı. Benzinli, dizel ve LPG'li araçta
+deponun hacmini, ortalama tüketimi ve anlık doluluğu; elektrikli araçta batarya,
+tüketim ve şarj yüzdesini girersiniz. Uygulama güzergah üzerinde nerede durmanız
+gerektiğini hesaplar ve rotayı duraklarla birlikte Google Maps'e aktarır.
 
 ## Nasıl çalışır
 
@@ -34,6 +32,24 @@ fiyatıyla hesaplanır. Son durakta depo tam doldurulmaz; varışa yetecek mikta
 varışta depoda kalması istenen yakıt (varsayılan: rezerv) ve %15 güvenlik payı
 kadar yakıt alınır.
 
+### Elektrikli araçlar
+
+Şarj durakları ayrı bir motorla (`EvChargePlanner`) seçilir, sonuç aynı ekranlarda
+gösterilir. Yalnızca DC hızlı şarj kullanılır; yol üstünde AC ile şarj saatler sürer.
+
+- Bir istasyona bataryada en az rezerv payı (varsayılan %15) kalmışken varılır.
+- Durak puanı dakikadır: sapma süresi, şarj süresi, gereksiz erken durma ve
+  yolculuğa eklenen fazladan durak.
+- Yalnızca gereken kadar şarj edilir, normalde %80'e kadar. %80 bir sonraki
+  istasyona yetmiyorsa önceki durak %100'e uzatılır.
+- Şarj süresi tek bir eğriyle hesaplanır (Open EV Data'nın varsayılanı: %50'ye
+  kadar tam güç, %80'de yarısı, %100'de onda biri). Güç, istasyonun ve aracın
+  gücünün küçüğüdür; aracın soketi (CCS2 / CHAdeMO) olmayan istasyon seçilmez.
+- Tutar, operatörün üyeliksiz DC liste fiyatıyla hesaplanır; şebekeden çekilen
+  enerji bataryaya girenden ~%5 fazla sayılır.
+- Rakım ve soğuk hava modellenmez; tüketim ve rezerv payı kullanıcı tarafından
+  ayarlanır.
+
 ## Veri kaynakları
 
 Uygulama hiçbir API anahtarı istemez. Kullanılan servislerin tamamı ücretsiz ve
@@ -42,6 +58,9 @@ anahtarsızdır.
 | Veri | Kaynak |
 | --- | --- |
 | Akaryakıt istasyonları | OpenStreetMap (ODbL): hazır Türkiye listesi, yedek olarak Overpass API |
+| Şarj istasyonları | EPDK Serbest Erişim Platformu (`apigateway.epdk.gov.tr/sarjIstasyonlari`) |
+| Şarj fiyatları | Operatörlerin kendi tarife sayfaları (`tools/ev_prices.json`) |
+| Elektrikli araç modelleri | Open EV Data (MIT) ve üretici sayfaları |
 | Benzin ve motorin fiyatı | Opet fiyat servisi (tüm iller tek istekte) |
 | Otogaz fiyatı | Petrol Ofisi fiyat sayfası |
 | Sürüş rotası | OSRM |
@@ -100,6 +119,10 @@ Yalnızca `https` adresleri kabul edilir.
   yapılır; sunucu yoktur.
 - Gelişmiş ayarlar (araç sayfasında kapalı gelir): rezerv payı ve varışta depoda
   kalması istenen en az yakıt (rezerv, çeyrek ya da yarım depo).
+- Elektrikli araç: 68 hazır model (aranabilir liste) ya da elle giriş, şu anki ve
+  varışta istenen şarj yüzdesi, durak başına varış/çıkış yüzdesi, şarj süresi,
+  kW, eklenecek kWh ve tutar. Yakıtlı ve elektrikli araç ayrı saklanır; yakıt
+  türü değişince diğer araç geri gelir.
 - Son girilen araç bilgileri (depo hacmi, tüketim, yakıt türü, doluluk), marka
   tercihi, kalkış ve varış noktası uygulama kapatılıp açılınca korunur. Adres
   aramasında son seçilen yerler en üstte gösterilir.
@@ -131,6 +154,8 @@ internet erişimi olması yeterlidir.
 | `DemoRoutePlanTest` | Gerçek OSRM rotası ve 391 gerçek OSM istasyonuyla uçtan uca plan |
 | `GoogleMapsIntentTest` | Üretilen Maps URL'sinin durak parametreleri |
 | `PersistenceAndQueryTest` | Ayarların kaydedilip geri yüklenmesi, istasyon sorgusunun rotayı kapsaması |
+| `EvChargePlannerTest` | Şarj süresi eğrisi, durak seçimi, %100'e uzatma, soket uyumu, uyarılar |
+| `EvDataTest` | Elektrikli profil kaydı, şarj istasyonu dosyası, uzak ayar, paylaşım metni |
 
 `DemoRoutePlanTest` canlı servislerden alınmış İstanbul-Ankara verisini
 `app/src/test/resources/demo/` altından okur. Ağa çıkmaz, ama gerçek veriyle
@@ -201,6 +226,7 @@ app/src/main/java/com/yakitrotam/app/
 │   │   ├── FuelBrand.kt            Markalar, renkler, OSM etiket eşlemesi
 │   │   ├── FuelPriceSnapshot.kt    Pompa fiyatı anlık görüntüsü
 │   │   ├── GasStation.kt           İstasyon ve OSM üzerinden yakıt bilgisi
+│   │   ├── EvPresets.kt            Hazır elektrikli araç modelleri
 │   │   ├── TripModels.kt           Duraklar ve seyahat özeti
 │   │   └── VehicleProfile.kt       Depo, tüketim, menzil formülleri
 │   └── repository/
@@ -212,6 +238,7 @@ app/src/main/java/com/yakitrotam/app/
 │       ├── RouteRepository.kt      OSRM ve çevrimdışı koridor yedeği
 │       └── TripPreferences.kt      Son girilen ayarların saklanması
 ├── domain/
+│   ├── EvChargePlanner.kt          Elektrikli araç için şarj durağı planı
 │   └── FuelOptimizerEngine.kt      Menzil simülasyonu ve durak seçimi
 ├── notify/
 │   └── PriceWatch.kt               Fiyat değişim bildirimi (WorkManager)
@@ -227,7 +254,28 @@ app/src/main/java/com/yakitrotam/app/
     └── GoogleMapsLauncher.kt       Maps intent'i
 ```
 
+## Şarj istasyonu listesini yenileme
+
+EPDK servisi anahtarsızdır ama kotası çok sıkıdır (saatte bir çağrı). Liste ayda
+bir elle yenilenir:
+
+```bash
+python tools/build_chargers.py chargers.json
+```
+
+Çıktı site deposuna `yakitrotam/chargers.json` olarak gönderilir. Ham cevap
+`chargers.json.raw.json` olarak kaydedilir; yalnızca fiyatlar değişince
+(`tools/ev_prices.json`) servis çağrılmadan yeniden üretilebilir:
+
+```bash
+python tools/build_chargers.py chargers.json --raw chargers.json.raw.json
+```
+
 ## Bilinen sınırlar
+
+- Şarj istasyonlarının doluluk, arıza ve çalışma saati bilgisi yoktur (EPDK
+  servisinde yok). Fiyat istasyon bazında değil operatör bazındadır; üyelik
+  indirimleri hesaba katılmaz.
 
 - Otogaz fiyatı bir web sayfasından ayrıştırılıyor; sayfa düzeni değişirse
   yeni sürüme kadar tahmine düşer.

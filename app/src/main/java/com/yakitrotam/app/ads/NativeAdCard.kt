@@ -111,7 +111,7 @@ private class NativeAdViews(context: Context) {
 
         val badge = TextView(context).apply {
             text = "Reklam"
-            setTextColor(Color.BLACK)
+            setTextColor(Color.WHITE)
             setTypeface(typeface, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             setPadding(dp(7), dp(2), dp(7), dp(2))
@@ -148,7 +148,7 @@ private class NativeAdViews(context: Context) {
         }
         val cta = Button(context).apply {
             isAllCaps = false
-            setTextColor(Color.BLACK)
+            setTextColor(Color.WHITE)
             setTypeface(typeface, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             minHeight = 0
@@ -183,13 +183,13 @@ private class NativeAdViews(context: Context) {
 
     companion object {
 
-        private val SURFACE = Color.parseColor("#191C22")
-        private val AMBER = Color.parseColor("#FFB020")
-        private val AMBER_BORDER = Color.parseColor("#66FFB020")
-        private val LIME = Color.parseColor("#9EFF3D")
-        private val TEXT = Color.parseColor("#F4F6FA")
-        private val SECONDARY = Color.parseColor("#9AA3B2")
-        private val MUTED = Color.parseColor("#636B7A")
+        private val SURFACE = Color.parseColor("#FFFFFF")
+        private val AMBER = Color.parseColor("#B25E00")
+        private val AMBER_BORDER = Color.parseColor("#66B25E00")
+        private val LIME = Color.parseColor("#0B7A6C")
+        private val TEXT = Color.parseColor("#132320")
+        private val SECONDARY = Color.parseColor("#4B5D59")
+        private val MUTED = Color.parseColor("#5E6F69")
 
         fun bind(view: NativeAdView, ad: NativeAd) {
             (view.headlineView as TextView).text = ad.headline

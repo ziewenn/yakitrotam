@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-10-31",
+  "note": "Üyeliksiz DC liste fiyatı (TL/kWh, KDV dahil). Aralık veren operatörde en yüksek değer. Kaynak: her operatörün kendi tarife sayfası.",
+  "operators": {
+    "zes": {"name": "ZES", "dc": 16.49, "match": ["zes"], "url": "https://zes.net/tr/fiyatlandirma"},
+    "trugo": {"name": "Trugo", "dc": 14.98, "match": ["trugo"], "url": "https://trugo.com.tr/price"},
+    "voltrun": {"name": "Voltrun", "dc": 13.90, "match": ["voltrun"], "url": "https://www.voltrun.com/tr/tarifeler"},
+    "esarj": {"name": "Eşarj", "dc": 14.90, "match": ["eşarj", "esarj"], "url": "https://esarj.com/fiyatlandirma"},
+    "wat": {"name": "WAT Mobilite", "dc": 14.49, "match": ["wat mobilite", "wat"], "url": "https://www.watmobilite.com/cozumler/kamusal-alanlar"},
+    "astor": {"name": "Astor", "dc": 13.99, "match": ["astor"], "url": "https://astorsarj.com.tr/"},
+    "otopriz": {"name": "Otopriz", "dc": 13.90, "match": ["otopriz"], "url": "https://otopriz.com.tr/uyelik-ve-tarifeler"},
+    "aksa": {"name": "Aksa Şarj", "dc": 13.99, "match": ["aksa"], "url": "https://www.aksasarj.com.tr/ucretler"},
+    "ovolt": {"name": "Ovolt", "dc": 14.49, "match": ["ovolt"], "url": "https://ovolt.com.tr/tarifeler"},
+    "sharz": {"name": "Sharz.net", "dc": 11.99, "match": ["sharz"], "url": "https://www.sharz.net/tarifeler"},
+    "5sarj": {"name": "5 Şarj", "dc": 15.90, "match": ["5 şarj", "5şarj", "5sarj", "borusan enbw"], "url": "https://5sarj.com/tr/fiyatlandirma"},
+    "dcharge": {"name": "D-Charge", "dc": 14.90, "match": ["d-charge", "dcharge"], "url": "https://dcharge.com.tr/tarifeler"},
+    "beefull": {"name": "Beefull", "dc": 13.99, "match": ["beefull"], "url": "https://beefull.com/tarifeler/elektrikli-arac-tarifesi/"},
+    "oncharge": {"name": "OnCharge", "dc": 13.50, "match": ["oncharge", "on charge", "kalyon"], "url": "https://oncharge.com.tr/fiyatlar"},
+    "enyakit": {"name": "En Yakıt", "dc": 14.90, "match": ["en yakıt", "enyakit", "en yakit"], "url": "https://www.enyakit.com.tr/ucretlendirme"},
+    "epower": {"name": "PO e-POwer", "dc": 11.99, "match": ["e-power", "epower", "petrol ofisi", "po şarj"], "url": "https://www.petrolofisi.com.tr/urun-ve-hizmetler/e-power"}
+  }
+}

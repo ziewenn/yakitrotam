@@ -66,12 +66,26 @@ enum class FuelType(
 ) {
     BENZIN("Benzin (95 Oktan)", 80.16),
     DIZEL("Motorin (Dizel)", 100.19),
-    LPG("Otogaz (LPG)", 34.39);
+    LPG("Otogaz (LPG)", 34.39),
+
+    /**
+     * Elektrikli araç. "Litre" alanları bu türde kWh, "depo" batarya demektir. Yedek fiyat TL/kWh:
+     * 16 şarj operatörünün üyeliksiz DC liste fiyatlarının ortancası (31.10.2026).
+     */
+    ELEKTRIK("Elektrik", 14.24);
+
+    val isElectric: Boolean
+        get() = this == ELEKTRIK
+
+    /** Yakıt miktarının birimi: L ya da kWh. */
+    val unit: String
+        get() = if (isElectric) "kWh" else "L"
 
     fun shortName(): String = when (this) {
         BENZIN -> "Benzin"
         DIZEL -> "Motorin"
         LPG -> "LPG"
+        ELEKTRIK -> "Elektrik"
     }
 
     companion object {

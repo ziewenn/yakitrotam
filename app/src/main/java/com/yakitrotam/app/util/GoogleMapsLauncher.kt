@@ -17,8 +17,16 @@ object GoogleMapsLauncher {
         val originStr = "${tripResult.origin.latitude},${tripResult.origin.longitude}"
         val destStr = "${tripResult.destination.latitude},${tripResult.destination.longitude}"
 
-        val waypointsStr = if (tripResult.stops.isNotEmpty()) {
-            tripResult.stops.joinToString("|") { stop ->
+        if (tripResult.stops.size > tripResult.mapsWaypoints.size) {
+            val count = tripResult.mapsWaypoints.size
+            Toast.makeText(
+                context,
+                "Google Haritalar en fazla $count ara durak alıyor; ilk $count durak eklendi.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        val waypointsStr = if (tripResult.mapsWaypoints.isNotEmpty()) {
+            tripResult.mapsWaypoints.joinToString("|") { stop ->
                 "${stop.station.latitude},${stop.station.longitude}"
             }
         } else {

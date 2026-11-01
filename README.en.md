@@ -2,12 +2,10 @@
 
 # YakıtRotam
 
-A refuelling stop planner for combustion vehicles. You enter your tank size,
-average consumption and current fuel level; the app works out where along the
-route you need to stop before dipping into your reserve, then hands the route
-and its stops over to Google Maps.
-
-What ABRP does for electric cars, for petrol, diesel and LPG.
+A refuelling and charging stop planner. For petrol, diesel and LPG cars you enter
+the tank size, average consumption and current fuel level; for electric cars the
+battery, consumption and state of charge. The app works out where along the route
+you need to stop, then hands the route and its stops over to Google Maps.
 
 ## How it works
 
@@ -35,6 +33,25 @@ province it is in. The final stop does not fill the tank to the brim; it takes
 only what is needed to reach the destination, plus the fuel you want left on
 arrival (the reserve by default) and a 15 percent margin.
 
+### Electric vehicles
+
+Charging stops are chosen by a separate engine (`EvChargePlanner`) and shown on
+the same screens. Only DC fast charging is used; charging on AC along the way
+would take hours.
+
+- You reach every charger with at least the reserve margin left (15% by default).
+- Stops are scored in minutes: detour time, charging time, stopping early for no
+  reason, and any extra stop added to the trip.
+- It charges only what is needed, normally up to 80%. If 80% does not reach the
+  next charger, the previous stop is extended up to 100%.
+- Charging time uses one curve (Open EV Data's default: full power up to 50%,
+  half at 80%, a tenth at 100%). Power is the lower of the charger and the car;
+  chargers without the car's connector (CCS2 / CHAdeMO) are never picked.
+- Cost uses the operator's non-member DC list price, counting ~5% more energy
+  drawn from the grid than goes into the battery.
+- Elevation and cold weather are not modelled; consumption and the reserve margin
+  are set by the user.
+
 ## Data sources
 
 The app needs no API keys. Every service it talks to is free and keyless.
@@ -42,6 +59,9 @@ The app needs no API keys. Every service it talks to is free and keyless.
 | Data | Source |
 | --- | --- |
 | Fuel stations | OpenStreetMap (ODbL): prebuilt Turkey list, Overpass API as fallback |
+| Charging stations | EPDK open access platform (`apigateway.epdk.gov.tr/sarjIstasyonlari`) |
+| Charging prices | Each operator's own tariff page (`tools/ev_prices.json`) |
+| EV models | Open EV Data (MIT) and manufacturer pages |
 | Petrol and diesel prices | Opet price service (all provinces in one request) |
 | Autogas (LPG) price | Petrol Ofisi price page |
 | Driving route | OSRM |
@@ -100,6 +120,10 @@ without waiting for a store update. Only `https` addresses are accepted.
   WorkManager; there is no server.
 - Advanced settings (collapsed by default in the vehicle sheet): reserve margin
   and the minimum fuel to have left on arrival (reserve, quarter or half tank).
+- Electric vehicles: 68 searchable model presets or manual entry, current and
+  desired arrival state of charge, and per stop the arrival/departure percentage,
+  charging time, kW, kWh added and cost. The fuel car and the EV are stored
+  separately; switching the fuel type brings the other car back.
 - The last vehicle settings (tank size, consumption, fuel type, fill level),
   brand preference, origin and destination survive an app restart. Recently
   picked places are listed first in the address search.
@@ -131,6 +155,8 @@ internet access.
 | `DemoRoutePlanTest` | End-to-end plan over a real OSRM route and 391 real OSM stations |
 | `GoogleMapsIntentTest` | Waypoint parameters in the generated Maps URL |
 | `PersistenceAndQueryTest` | Saving and restoring settings, station query covering the whole route |
+| `EvChargePlannerTest` | Charging curve, stop choice, extending to 100%, connector match, warnings |
+| `EvDataTest` | EV profile persistence, charger file parsing, remote config, share text |
 
 `DemoRoutePlanTest` reads Istanbul-Ankara data captured from the live services
 under `app/src/test/resources/demo/`. It makes no network calls, but because the
@@ -203,6 +229,7 @@ app/src/main/java/com/yakitrotam/app/
 │   │   ├── FuelBrand.kt            Brands, colours, OSM tag mapping
 │   │   ├── FuelPriceSnapshot.kt    Pump price snapshot
 │   │   ├── GasStation.kt           Station and OSM-derived fuel availability
+│   │   ├── EvPresets.kt            Bundled EV model presets
 │   │   ├── TripModels.kt           Stops and trip summary
 │   │   └── VehicleProfile.kt       Tank, consumption, range formulas
 │   └── repository/
@@ -214,6 +241,7 @@ app/src/main/java/com/yakitrotam/app/
 │       ├── RouteRepository.kt      OSRM with an offline corridor fallback
 │       └── TripPreferences.kt      Persists the last entered settings
 ├── domain/
+│   ├── EvChargePlanner.kt          Charging stop plan for electric cars
 │   └── FuelOptimizerEngine.kt      Range simulation and stop selection
 ├── notify/
 │   └── PriceWatch.kt               Price change notification (WorkManager)
@@ -229,7 +257,28 @@ app/src/main/java/com/yakitrotam/app/
     └── GoogleMapsLauncher.kt       Maps intent
 ```
 
+## Refreshing the charging station list
+
+The EPDK service needs no key but has a very strict quota (one call per hour).
+The list is refreshed by hand once a month:
+
+```bash
+python tools/build_chargers.py chargers.json
+```
+
+Push the output to the site repository as `yakitrotam/chargers.json`. The raw
+response is saved as `chargers.json.raw.json`; when only prices change
+(`tools/ev_prices.json`) the file can be rebuilt without calling the service:
+
+```bash
+python tools/build_chargers.py chargers.json --raw chargers.json.raw.json
+```
+
 ## Known limitations
+
+- Charging stations have no occupancy, fault or opening-hours data (EPDK does not
+  publish it). Prices are per operator, not per station; membership discounts are
+  not applied.
 
 - The autogas price is parsed from a web page; if its layout changes the app
   falls back to an estimate until the next release.

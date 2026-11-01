@@ -4,7 +4,7 @@ Kullanım:
     python store/make_store_assets.py <ham_goruntu_klasoru>
 
 Ham klasörde şu dosyalar beklenir (1344x2992, reklamsız build: ./gradlew installDebug -PnoAds):
-    planner.png, summary.png, stops.png, vehicle.png
+    planner.png, summary.png, ev.png, vehicle.png
 Çıktılar bu betiğin bulunduğu klasöre yazılır.
 """
 import sys
@@ -15,10 +15,10 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 RAW = Path(sys.argv[1])
 OUT = Path(__file__).parent
 FONTS = Path("C:/Windows/Fonts")
-BG = (15, 17, 21)
-LIME = (158, 255, 61)
-WHITE = (242, 244, 248)
-MUTED = (163, 171, 186)
+BG = (243, 248, 246)
+LIME = (11, 122, 108)    # vurgu: camgöbeği
+WHITE = (19, 35, 32)     # başlık metni (açık zeminde koyu)
+MUTED = (75, 93, 89)
 
 
 def font(name, size):
@@ -37,7 +37,7 @@ def rounded(img, radius):
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, img.width - 1, img.height - 1), radius, fill=255)
     out = Image.new("RGBA", img.size, (0, 0, 0, 0))
     out.paste(img, (0, 0), mask)
-    ImageDraw.Draw(out).rounded_rectangle((0, 0, img.width - 1, img.height - 1), radius, outline=(46, 51, 61), width=4)
+    ImageDraw.Draw(out).rounded_rectangle((0, 0, img.width - 1, img.height - 1), radius, outline=(211, 227, 221), width=4)
     return out
 
 
@@ -76,9 +76,9 @@ def screenshot(raw, title, subtitle, name):
 
 
 screenshot("planner", "Rotanı gir, deponu söyle", "Göstergeyi aracındaki gibi ayarla, gerisini bırak", "screenshot-1")
-screenshot("summary", "Yolculuğun maliyeti hazır", "Mesafe, süre ve pompada ödeyeceğin tutar", "screenshot-2")
-screenshot("stops", "Gerçekten yol üstündeki istasyonlar", "Otoyoldan çıkartan duraklar elenir", "screenshot-3")
-screenshot("vehicle", "Aracını bir kez tanıt", "Tüketim, depo ve marka tercihin hatırlanır", "screenshot-4")
+screenshot("summary", "Yolculuğun maliyeti hazır", "Mesafe, süre ve ödeyeceğin tutar tek bakışta", "screenshot-2")
+screenshot("ev", "Elektrikli araçla şarj planı", "Her durakta varış ve çıkış şarjı, süre ve tutar", "screenshot-3")
+screenshot("vehicle", "Aracını bir kez tanıt", "68 elektrikli model hazır; yakıtlı araç da kayıtlı kalır", "screenshot-4")
 
 # Öne çıkan görsel (1024x500)
 width, height = 1024, 500
@@ -91,7 +91,7 @@ ImageDraw.Draw(icon_mask).rounded_rectangle((0, 0, 111, 111), 28, fill=255)
 feature.paste(icon, (64, 110), icon_mask)
 draw.text((64, 240), "YakıtRotam", font=font("segoeuib.ttf", 66), fill=WHITE)
 draw.text((66, 330), "Yol boyunca doğru yerde,", font=font("seguisb.ttf", 32), fill=MUTED)
-draw.text((66, 372), "doğru kadar yakıt.", font=font("seguisb.ttf", 32), fill=LIME)
+draw.text((66, 372), "doğru kadar yakıt ve şarj.", font=font("seguisb.ttf", 32), fill=LIME)
 shot = phone("summary").crop((0, 0, 1344, 1500))
 shot_width = 400
 shot = rounded(shot.resize((shot_width, int(shot.height * shot_width / shot.width)), Image.LANCZOS), 36)

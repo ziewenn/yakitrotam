@@ -68,8 +68,12 @@ object GoogleMapsLauncher {
     /**
      * Kullanıcı belirli bir tek durağa (istasyona) doğrudan turn-by-turn navigasyon başlatmak isterse.
      */
-    fun launchTurnByTurnToStation(context: Context, stop: FuelStop) {
-        val gmmIntentUri = Uri.parse("google.navigation:q=${stop.station.latitude},${stop.station.longitude}&mode=d")
+    fun launchTurnByTurnToStation(context: Context, stop: FuelStop) =
+        launchTurnByTurn(context, stop.station.latitude, stop.station.longitude)
+
+    /** Bir noktaya (ör. haritadan seçilen istasyona) doğrudan yol tarifi. */
+    fun launchTurnByTurn(context: Context, latitude: Double, longitude: Double) {
+        val gmmIntentUri = Uri.parse("google.navigation:q=$latitude,$longitude&mode=d")
         val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri).apply {
             setPackage("com.google.android.apps.maps")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -79,7 +83,7 @@ object GoogleMapsLauncher {
             context.startActivity(mapIntent)
         } catch (_: Exception) {
             // Fallback web url
-            val webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${stop.station.latitude},${stop.station.longitude}")
+            val webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$latitude,$longitude")
             val webIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

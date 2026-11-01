@@ -5,6 +5,10 @@ import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import org.maplibre.android.style.sources.GeoJsonOptions
+import com.yakitrotam.app.data.model.GasStation
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -238,6 +242,134 @@ fun PickerMap(
             }
             mapView
         }
+    )
+}
+
+/**
+ * Harita ekranı: istasyonlar kümelenmiş noktalar olarak (binlerce istasyon tek katmanda,
+ * MapLibre kendisi kümeler). Noktaya dokununca [onStationClick], kümeye dokununca yakınlaşma.
+ * [focus] değişince kamera oraya kayar; [onCenterChanged] harita her durduğunda çağrılır.
+ */
+@Composable
+fun StationsMap(
+    stations: List<GasStation>,
+    electric: Boolean,
+    focus: LatLng,
+    focusZoom: Double,
+    selectedId: String?,
+    onCenterChanged: (LatLng) -> Unit,
+    onStationClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val mapView = rememberMapView()
+    val latestCenter by rememberUpdatedState(onCenterChanged)
+    val latestClick by rememberUpdatedState(onStationClick)
+    // Aynı listeyi ve aynı odağı tekrar tekrar haritaya göndermemek için son uygulananlar.
+    val applied = remember { arrayOfNulls<Any>(3) }
+
+    AndroidView(
+        modifier = modifier,
+        factory = {
+            mapView.keepGesturesInside()
+            mapView.getMapAsync { map ->
+                map.basicSettings()
+                map.cameraPosition = CameraPosition.Builder()
+                    .target(MapLatLng(focus.latitude, focus.longitude)).zoom(focusZoom).build()
+                applied[1] = focus
+                map.setStyle(Style.Builder().fromUri(Endpoints.mapStyleLight)) { style -> addStationLayers(style) }
+                map.addOnCameraIdleListener {
+                    map.cameraPosition.target?.let { latestCenter(LatLng(it.latitude, it.longitude)) }
+                }
+                map.addOnMapClickListener { point ->
+                    val screen = map.projection.toScreenLocation(point)
+                    val station = map.queryRenderedFeatures(screen, "station-points").firstOrNull()
+                    val cluster = map.queryRenderedFeatures(screen, "station-clusters").firstOrNull()
+                    when {
+                        station != null -> { latestClick(station.getStringProperty("id")); true }
+                        cluster != null -> {
+                            map.animateCamera(CameraUpdateFactory.newLatLngZoom(point, map.cameraPosition.zoom + 2))
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            }
+            mapView
+        },
+        update = { view ->
+            view.getMapAsync { map ->
+                map.getStyle { style ->
+                    if (applied[0] !== stations || applied[2] != selectedId) {
+                        applied[0] = stations
+                        applied[2] = selectedId
+                        (style.getSource("stations") as? GeoJsonSource)?.setGeoJson(
+                            FeatureCollection.fromFeatures(stations.map { stationFeature(it, electric, it.id == selectedId) })
+                        )
+                    }
+                }
+                if (applied[1] != focus) {
+                    applied[1] = focus
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(MapLatLng(focus.latitude, focus.longitude), focusZoom), 600
+                    )
+                }
+            }
+        }
+    )
+}
+
+private fun stationFeature(station: GasStation, electric: Boolean, selected: Boolean): Feature =
+    Feature.fromGeometry(Point.fromLngLat(station.longitude, station.latitude)).apply {
+        addStringProperty("id", station.id)
+        val color = when {
+            selected -> "#C62828"
+            !electric -> colorHex(station.brand.primaryColorHex)
+            (station.ccsKw ?: station.chademoKw ?: 0.0) >= 150.0 -> "#0A6458"
+            else -> "#3E9C8F"
+        }
+        addStringProperty("color", color)
+        addNumberProperty("size", if (selected) 9 else 6)
+    }
+
+private fun addStationLayers(style: Style) {
+    style.addSource(
+        GeoJsonSource(
+            "stations",
+            FeatureCollection.fromFeatures(emptyList<Feature>()),
+            GeoJsonOptions().withCluster(true).withClusterRadius(46).withClusterMaxZoom(11)
+        )
+    )
+    style.addLayer(
+        CircleLayer("station-clusters", "stations").withProperties(
+            PropertyFactory.circleColor("#0B7A6C"),
+            PropertyFactory.circleOpacity(0.85f),
+            PropertyFactory.circleRadius(
+                Expression.step(
+                    Expression.get("point_count"), Expression.literal(14f),
+                    Expression.stop(20, 18f), Expression.stop(100, 23f)
+                )
+            ),
+            PropertyFactory.circleStrokeColor("#FFFFFF"),
+            PropertyFactory.circleStrokeWidth(2f)
+        ).withFilter(Expression.has("point_count"))
+    )
+    style.addLayer(
+        SymbolLayer("station-cluster-count", "stations").withProperties(
+            PropertyFactory.textField(Expression.toString(Expression.get("point_count_abbreviated"))),
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+            PropertyFactory.textSize(12f),
+            PropertyFactory.textColor("#FFFFFF"),
+            PropertyFactory.textAllowOverlap(true),
+            PropertyFactory.textIgnorePlacement(true)
+        ).withFilter(Expression.has("point_count"))
+    )
+    style.addLayer(
+        CircleLayer("station-points", "stations").withProperties(
+            PropertyFactory.circleColor(Expression.get("color")),
+            PropertyFactory.circleRadius(Expression.toNumber(Expression.get("size"))),
+            PropertyFactory.circleStrokeColor("#FFFFFF"),
+            PropertyFactory.circleStrokeWidth(2f)
+        ).withFilter(Expression.not(Expression.has("point_count")))
     )
 }
 

@@ -114,6 +114,9 @@ without waiting for a store update. Only `https` addresses are accepted.
 - Pick a location on the map for places without an address.
 - Share the plan as plain text (WhatsApp, SMS, email).
 - All stops are passed to Google Maps as waypoints.
+- Map tab: nearby fuel or charging stations (150+ kW filter); tapping one shows
+  power, price, directions and "plan a route". With location permission the map
+  opens around the driver.
 - After a few plans the app requests Google Play's in-app review prompt.
 - Optional price alerts: a notification when the price of your fuel type changes
   in your origin province. The comparison runs on the device every 6 hours via
@@ -257,10 +260,13 @@ app/src/main/java/com/yakitrotam/app/
     └── GoogleMapsLauncher.kt       Maps intent
 ```
 
-## Refreshing the charging station list
+## Refreshing the station lists
 
-The EPDK service needs no key but has a very strict quota (one call per hour).
-The list is refreshed by hand once a month:
+A GitHub Actions workflow in the site repository
+(`ziewenn.github.io/.github/workflows/yakitrotam-stations.yml`) refreshes the
+lists automatically: charging stations daily (EPDK allows about one call per
+hour), fuel stations every Monday. If a script fails or the new list is shorter
+than 90% of the old one, the old list stays published. To run it by hand:
 
 ```bash
 python tools/build_chargers.py chargers.json

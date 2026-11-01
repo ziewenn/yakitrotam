@@ -162,6 +162,8 @@ Elektrikli araçlar için:
 - Her durakta varış ve çıkış şarj yüzdesi, şarj süresi, kW, eklenecek kWh ve operatörün liste fiyatıyla tutar
 - Yalnızca gereken kadar şarj; aracının soketine uymayan istasyon önerilmez
 
+Harita: yakınındaki akaryakıt ve şarj istasyonlarını gör, birine dokunup yol tarifi al ya da oraya rota planla.
+
 Neden YakıtRotam?
 - İstasyonlar OpenStreetMap'teki gerçek kayıtlardan her rota için yeniden alınır.
 - Benzin, motorin ve LPG fiyatları il bazında günceldir; her durak kendi ilinin fiyatıyla hesaplanır.

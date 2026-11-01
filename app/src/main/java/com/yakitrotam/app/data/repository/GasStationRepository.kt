@@ -29,6 +29,9 @@ class GasStationRepository(
 
     fun getAllStations(): List<GasStation> = cachedStations
 
+    /** Türkiye'nin tüm listesi (harita ekranı); [loadStationsAlongRoute]'un önbelleğini değiştirmez. */
+    suspend fun datasetStations(): List<GasStation>? = remoteSource.allStations()
+
     fun setStations(stations: List<GasStation>) {
         cachedStations = stations
     }

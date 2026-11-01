@@ -85,6 +85,9 @@ class OverpassStationSource(
         return (downloaded ?: readCache()).also { dataset = it }
     }
 
+    /** Hazır listenin tamamı (harita ekranı için); listeye ulaşılamazsa null. */
+    suspend fun allStations(): List<GasStation>? = withContext(Dispatchers.IO) { loadDataset() }
+
     /**
      * Rota koridorundaki tüm istasyonları getirir: önce hazır listeden, ona ulaşılamazsa canlı
      * Overpass sorgusuyla. Kaynaklara hiç ulaşılamadıysa null döner; boş liste "bu rotada istasyon

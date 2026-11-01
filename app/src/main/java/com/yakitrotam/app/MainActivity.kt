@@ -9,6 +9,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import com.yakitrotam.app.util.GoogleMapsLauncher
+import com.yakitrotam.app.ui.theme.CardSurface
+import com.yakitrotam.app.ui.theme.AccentSoft
+import com.yakitrotam.app.ui.theme.Accent
+import com.yakitrotam.app.ui.screens.StationMapScreen
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,6 +106,8 @@ class MainActivity : ComponentActivity() {
                     color = AppBackground
                 ) {
                     val uiState by viewModel.uiState.collectAsState()
+                    // Alt menü: 0 = rota planlayıcı, 1 = yakındaki istasyonlar haritası.
+                    var tab by rememberSaveable { mutableIntStateOf(0) }
 
                     if (uiState.tripResult != null) {
                         // Plana bakıp geri dönen kullanıcı bir işin ortasında değildir; puan istemek için uygun an.
@@ -100,8 +121,47 @@ class MainActivity : ComponentActivity() {
                             onBackToPlanner = closeSummary,
                             onSelectAlternative = { index, id -> viewModel.selectAlternative(index, id) }
                         )
-                    } else {
-                        TripPlannerScreen(
+                    } else Scaffold(
+                        containerColor = AppBackground,
+                        bottomBar = {
+                            NavigationBar(containerColor = CardSurface) {
+                                listOf(
+                                    Triple("Rota", Icons.Default.Route, 0),
+                                    Triple("Harita", Icons.Default.Map, 1)
+                                ).forEach { (label, icon, index) ->
+                                    NavigationBarItem(
+                                        selected = tab == index,
+                                        onClick = { tab = index },
+                                        icon = { Icon(icon, contentDescription = null) },
+                                        label = { Text(label) },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Accent,
+                                            selectedTextColor = Accent,
+                                            indicatorColor = AccentSoft
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    ) { innerPadding ->
+                        // Ekranların kendi sistem çubuğu boşlukları alt menüyle iki kez sayılmasın.
+                        val screenModifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                        BackHandler(enabled = tab != 0) { tab = 0 }
+                        if (tab == 1) {
+                            StationMapScreen(
+                                startElectric = uiState.vehicleProfile.isElectric,
+                                startCenter = uiState.origin.latLng,
+                                loadStations = { viewModel.mapStations(it) },
+                                locate = { viewModel.currentLocationOrNull(this@MainActivity) },
+                                onNavigate = { GoogleMapsLauncher.launchTurnByTurn(this@MainActivity, it.latitude, it.longitude) },
+                                onPlanTo = {
+                                    viewModel.planToStation(it)
+                                    tab = 0
+                                },
+                                modifier = screenModifier
+                            )
+                        } else TripPlannerScreen(
+                            modifier = screenModifier,
                             uiState = uiState,
                             onSelectOrigin = { viewModel.setOrigin(it) },
                             onSelectDestination = { viewModel.setDestination(it) },

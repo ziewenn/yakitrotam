@@ -412,6 +412,19 @@ class TripViewModel(
         }
     }
 
+    /** Harita ekranı: elektrikli araç için şarj, değilse akaryakıt istasyonlarının tamamı. */
+    suspend fun mapStations(electric: Boolean): List<GasStation>? =
+        (if (electric) evStationRepository else stationRepository).datasetStations()
+
+    /** Harita ekranı için cihaz konumu; alınamazsa null (izin, GPS kapalı...). */
+    suspend fun currentLocationOrNull(context: Context): LatLng? =
+        runCatching { locationService.getCurrentLocation(context) }.getOrNull()
+
+    /** Haritadan seçilen istasyonu varış noktası yapar. */
+    fun planToStation(station: GasStation) {
+        setDestination(CityLocation(station.name, station.city, station.latitude, station.longitude))
+    }
+
     fun dismissError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

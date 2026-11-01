@@ -239,7 +239,8 @@ fun TripPlannerScreen(
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, AppBackground, AppBackground)))
                 .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+                // Banner ile alt menü arasında boşluk: reklama yanlışlıkla dokunulmasın (AdMob yerleşim kuralı).
+                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             uiState.errorMessage?.let { ErrorBanner(it, onDismissError) }

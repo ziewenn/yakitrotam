@@ -113,6 +113,9 @@ Yalnızca `https` adresleri kabul edilir.
 - Adresi olmayan noktalar için haritadan konum seçme.
 - Planı düz metin olarak paylaşma (WhatsApp, SMS, e-posta).
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
+- Harita sekmesi: yakındaki akaryakıt ya da şarj istasyonları (150+ kW süzgeci),
+  dokununca güç, fiyat, yol tarifi ve "Rota planla". Konum izni varsa harita
+  sürücünün çevresinde açılır.
 - Birkaç plandan sonra Google Play'in uygulama içi puanlama penceresi istenir.
 - İsteğe bağlı fiyat bildirimi: seçili yakıt türünün kalkış ilindeki fiyatı
   değişince haber verir. Karşılaştırma cihazda, WorkManager ile 6 saatte bir
@@ -254,10 +257,13 @@ app/src/main/java/com/yakitrotam/app/
     └── GoogleMapsLauncher.kt       Maps intent'i
 ```
 
-## Şarj istasyonu listesini yenileme
+## İstasyon listelerini yenileme
 
-EPDK servisi anahtarsızdır ama kotası çok sıkıdır (saatte bir çağrı). Liste ayda
-bir elle yenilenir:
+Listeler site deposundaki GitHub Actions iş akışıyla
+(`ziewenn.github.io/.github/workflows/yakitrotam-stations.yml`) kendiliğinden
+yenilenir: şarj istasyonları her gün (EPDK kotası saatte bir çağrı), akaryakıt
+istasyonları her pazartesi. Betik hata verirse ya da yeni liste eskisinin
+%90'ından kısaysa eski liste yayında kalır. Elle çalıştırmak için:
 
 ```bash
 python tools/build_chargers.py chargers.json

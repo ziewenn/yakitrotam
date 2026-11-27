@@ -38,6 +38,9 @@ object Endpoints {
     /** Halka açık DC şarj istasyonları, EPDK verisinden (tools/build_chargers.py çıktısı). */
     @Volatile var chargers: String = "https://ziewenn.github.io/yakitrotam/chargers.json"
         private set
+    /** Yalnızca AC soketi olan halka açık istasyonlar; haritada gösterilir, rota planına girmez. */
+    @Volatile var chargersAc: String = "https://ziewenn.github.io/yakitrotam/chargers-ac.json"
+        private set
     @Volatile var nominatim: String = "https://nominatim.openstreetmap.org"
         private set
     @Volatile var photon: String = "https://photon.komoot.io"
@@ -83,6 +86,7 @@ object Endpoints {
         config["mapStyle"].url()?.let { mapStyle = it }
         config["stations"].url()?.let { stations = it }
         config["chargers"].url()?.let { chargers = it }
+        config["chargersAc"].url()?.let { chargersAc = it }
         config["mapStyleLight"].url()?.let { mapStyleLight = it }
         runCatching { config["overpass"]?.jsonArray?.mapNotNull { it.url() } }.getOrNull()
             ?.takeIf { it.isNotEmpty() }

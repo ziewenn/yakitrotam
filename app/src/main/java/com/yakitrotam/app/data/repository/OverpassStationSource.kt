@@ -227,6 +227,7 @@ class OverpassStationSource(
                     chademoKw = tags.positiveDouble("charge:chademo_kw"),
                     chargeInfo = tags.optString("charge:info").takeIf { it.isNotBlank() },
                     kwhPriceTL = tags.positiveDouble("charge:price"),
+                    acKw = tags.positiveDouble("charge:ac_kw"),
                     operatorName = if (osmType == "epdk") tags.optString("operator").takeIf { it.isNotBlank() } else null
                 )
             )

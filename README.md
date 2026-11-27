@@ -113,7 +113,7 @@ Yalnızca `https` adresleri kabul edilir.
 - Adresi olmayan noktalar için haritadan konum seçme.
 - Planı düz metin olarak paylaşma (WhatsApp, SMS, e-posta).
 - Tüm duraklar ara nokta olarak Google Maps'e aktarılır.
-- Harita sekmesi: yakındaki akaryakıt ya da şarj istasyonları (150+ kW süzgeci),
+- Harita sekmesi: yakındaki akaryakıt ya da şarj istasyonları (DC / AC ve 150+ kW süzgeci),
   dokununca güç, fiyat, yol tarifi ve "Rota planla". Konum izni varsa harita
   sürücünün çevresinde açılır.
 - Köprü ve otoyol ücreti (tahmini, otomobil): Boğaz köprüleri, Osmangazi, 1915

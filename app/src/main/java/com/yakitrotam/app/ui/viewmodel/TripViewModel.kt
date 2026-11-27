@@ -59,7 +59,9 @@ class TripViewModel(
     private val onPlanReady: () -> Unit = {},
     /** Elektrikli araç için şarj istasyonları ve şarj planlayıcısı. */
     private val evStationRepository: GasStationRepository = GasStationRepository(),
-    private val evPlanner: EvChargePlanner = EvChargePlanner(evStationRepository)
+    private val evPlanner: EvChargePlanner = EvChargePlanner(evStationRepository),
+    /** Yalnızca AC'li istasyonlar: harita süzgeci içindir, planlamada kullanılmaz. */
+    private val acStationRepository: GasStationRepository? = null
 ) : ViewModel() {
 
     val popularCities: List<CityLocation> = routeRepository.popularCities
@@ -475,6 +477,13 @@ class TripViewModel(
     /** Harita ekranı: elektrikli araç için şarj, değilse akaryakıt istasyonlarının tamamı. */
     suspend fun mapStations(electric: Boolean): List<GasStation>? =
         (if (electric) evStationRepository else stationRepository).datasetStations()
+
+    /** Harita ekranı, AC süzgeci: AC soketi olan DC istasyonlar ve yalnızca AC'li istasyonlar. */
+    suspend fun mapAcStations(): List<GasStation>? {
+        val dcWithAc = evStationRepository.datasetStations()?.filter { it.acKw != null }
+        val acOnly = acStationRepository?.datasetStations()
+        return if (dcWithAc == null && acOnly == null) null else dcWithAc.orEmpty() + acOnly.orEmpty()
+    }
 
     /** Harita ekranı için cihaz konumu; alınamazsa null (izin, GPS kapalı...). */
     suspend fun currentLocationOrNull(context: Context): LatLng? =

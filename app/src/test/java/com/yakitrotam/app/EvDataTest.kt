@@ -168,4 +168,18 @@ class EvDataTest {
         val shared = TripShareText.build(trip).lines().first { it.startsWith("Tüm rota") }
         assertEquals(8, Regex("%7C").findAll(shared).count())
     }
+
+    @Test
+    fun `yalnizca AC istasyon sarj istasyonudur ama DC planina girmez`() {
+        val body = """{"elements":[
+            {"type":"epdk","id":2000,"lat":39.0,"lon":32.0,"tags":{"name":"Otel Otoparkı","operator":"X",
+             "charge:ac_kw":"22","charge:info":"X · AC 22 kW ×2"}}
+        ]}"""
+        val station = OverpassStationSource().parseElements(body).single()
+        assertEquals(22.0, station.acKw!!, 1e-9)
+        assertTrue(station.isCharger)
+        assertNull(station.dcKwFor(DcConnector.CCS2))
+        assertNull(station.dcKwFor(DcConnector.CHADEMO))
+        assertNull(station.kwhPriceTL)
+    }
 }

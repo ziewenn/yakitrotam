@@ -41,6 +41,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.Power
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.yakitrotam.app.ui.theme.FuelAmber
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Star
@@ -95,6 +98,7 @@ fun StationMapScreen(
     startElectric: Boolean,
     startCenter: LatLng,
     loadStations: suspend (electric: Boolean) -> List<GasStation>?,
+    loadAcStations: suspend () -> List<GasStation>? = { null },
     locate: suspend () -> LatLng?,
     onNavigate: (GasStation) -> Unit,
     onPlanTo: (GasStation) -> Unit,
@@ -105,6 +109,8 @@ fun StationMapScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var electric by rememberSaveable { mutableStateOf(startElectric) }
+    // Şarjda akım türü: DC (hızlı, varsayılan) ya da AC.
+    var acMode by rememberSaveable { mutableStateOf(false) }
     var fastOnly by rememberSaveable { mutableStateOf(false) }
     var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var all by remember { mutableStateOf<List<GasStation>?>(null) }
@@ -116,11 +122,11 @@ fun StationMapScreen(
     var locating by remember { mutableStateOf(false) }
     var myLocation by remember { mutableStateOf<LatLng?>(null) }
 
-    LaunchedEffect(electric) {
+    LaunchedEffect(electric, acMode) {
         all = null
         failed = false
         selectedId = null
-        val loaded = loadStations(electric)
+        val loaded = if (electric && acMode) loadAcStations() else loadStations(electric)
         all = loaded
         failed = loaded == null
     }
@@ -147,9 +153,9 @@ fun StationMapScreen(
     // İzin önceden verilmişse harita doğrudan sürücünün çevresinde açılır.
     LaunchedEffect(Unit) { if (hasLocationPermission()) goToMyLocation() }
 
-    val visible = remember(all, fastOnly, electric, favoritesOnly, favoriteIds) {
+    val visible = remember(all, fastOnly, electric, acMode, favoritesOnly, favoriteIds) {
         all.orEmpty().filter {
-            (!electric || !fastOnly || ((it.ccsKw ?: it.chademoKw ?: 0.0) >= FAST_CHARGE_KW)) &&
+            (!electric || acMode || !fastOnly || ((it.ccsKw ?: it.chademoKw ?: 0.0) >= FAST_CHARGE_KW)) &&
                 (!favoritesOnly || it.id in favoriteIds)
         }
     }
@@ -172,12 +178,14 @@ fun StationMapScreen(
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp)
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            // Beş çip dar ekrana sığmaz; satır yana kayar.
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MapChip("Akaryakıt", Icons.Default.LocalGasStation, selected = !electric) { electric = false }
-            MapChip("Şarj (DC)", Icons.Default.Bolt, selected = electric) { electric = true }
-            if (electric) MapChip("150+ kW", null, selected = fastOnly) { fastOnly = !fastOnly }
+            MapChip("DC şarj", Icons.Default.Bolt, selected = electric && !acMode) { electric = true; acMode = false }
+            MapChip("AC şarj", Icons.Default.Power, selected = electric && acMode) { electric = true; acMode = true }
+            if (electric && !acMode) MapChip("150+ kW", null, selected = fastOnly) { fastOnly = !fastOnly }
             MapChip("Favoriler", Icons.Default.Star, selected = favoritesOnly) { favoritesOnly = !favoritesOnly }
         }
         AdBanner(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
@@ -289,10 +297,10 @@ private fun StatusPill(text: String) {
 
 /** İstasyonun kısa bilgisi: şarjda güç ve fiyat, akaryakıtta marka ve yer. */
 private fun stationInfo(station: GasStation): String =
-    if (station.ccsKw != null || station.chademoKw != null) {
+    if (station.isCharger) {
         listOfNotNull(
             station.chargeInfo?.substringAfter(" · ", station.chargeInfo)?.substringBefore(" · Yeşil")
-                ?: "${formatDecimal(station.ccsKw ?: station.chademoKw ?: 0.0)} kW",
+                ?: "${formatDecimal(station.ccsKw ?: station.chademoKw ?: station.acKw ?: 0.0)} kW",
             station.kwhPriceTL?.let { "${formatPrice(it)}/kWh" }
         ).joinToString(" · ")
     } else {
@@ -305,7 +313,7 @@ private fun operatorOf(station: GasStation): String? =
 
 @Composable
 private fun StationIcon(station: GasStation, size: Int) {
-    if (station.ccsKw != null || station.chademoKw != null) {
+    if (station.isCharger) {
         Box(Modifier.size(size.dp).clip(CircleShape).background(AccentSoft), contentAlignment = Alignment.Center) {
             Icon(Icons.Default.Bolt, null, tint = Accent, modifier = Modifier.size((size * 0.6f).dp))
         }
@@ -376,10 +384,12 @@ private fun SelectedStationCard(
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Kapat", tint = TextSecondary) }
         }
-        val details = if (station.ccsKw != null || station.chademoKw != null) {
+        val details = if (station.isCharger) {
             listOfNotNull(
                 station.chargeInfo?.substringAfter(" · ", ""),
-                station.kwhPriceTL?.let { "Üyeliksiz DC fiyatı ${formatPrice(it)}/kWh" } ?: "Fiyat bilinmiyor (ortalama ~14,24 ₺/kWh)"
+                // Fiyat tablosu DC içindir; yalnızca AC'li istasyonda fiyat satırı gösterilmez.
+                station.kwhPriceTL?.let { "Üyeliksiz DC fiyatı ${formatPrice(it)}/kWh" }
+                    ?: "Fiyat bilinmiyor (ortalama ~14,24 ₺/kWh)".takeIf { station.ccsKw != null || station.chademoKw != null }
             )
         } else {
             listOfNotNull(

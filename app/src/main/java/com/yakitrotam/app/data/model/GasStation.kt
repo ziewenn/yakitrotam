@@ -31,8 +31,13 @@ data class GasStation(
     /** Şarj istasyonu: operatörün üyeliksiz DC liste fiyatı (TL/kWh); bilinmiyorsa null. */
     val kwhPriceTL: Double? = null,
     /** Şarj istasyonu: şarj ağının adı ("ZES", "Trugo"); şarj ağı tercihi bununla eşlenir. */
-    val operatorName: String? = null
+    val operatorName: String? = null,
+    /** Şarj istasyonu: en güçlü AC soketi (kW); AC soketi yoksa null. Rota planı AC kullanmaz. */
+    val acKw: Double? = null
 ) {
+    /** Akaryakıt değil, şarj istasyonu (DC ya da AC). */
+    val isCharger: Boolean get() = ccsKw != null || chademoKw != null || acKw != null
+
     val location: LatLng
         get() = LatLng(latitude, longitude)
 

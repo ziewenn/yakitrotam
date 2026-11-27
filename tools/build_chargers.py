@@ -1,7 +1,8 @@
-"""Türkiye'deki halka açık DC şarj istasyonlarını EPDK'nın açık servisinden alıp tek dosyaya yazar.
+"""Türkiye'deki halka açık şarj istasyonlarını EPDK'nın açık servisinden alır: DC'liler ilk dosyaya,
+yalnızca AC'liler (verilirse) ikinci dosyaya yazılır.
 
 Kullanım:
-    python tools/build_chargers.py <çıktı.json>                 EPDK'dan bir kez çeker
+    python tools/build_chargers.py <çıktı.json> [<ac.json>]     EPDK'dan bir kez çeker
     python tools/build_chargers.py <çıktı.json> --raw <dosya>    kayıtlı EPDK cevabından üretir (çağrı yok)
     python tools/build_chargers.py --selftest
 
@@ -282,6 +283,7 @@ def display_operator(marka, price_key, prices):
 
 def build(rows, prices):
     elements, unmatched, matched, kinds, services, swapped, misplaced = [], {}, {}, {}, {}, [], []
+    ac_elements = []  # yalnızca AC soketi olan istasyonlar: haritada gösterilir, rota planına girmez
     for row in rows:
         service = str(row.get("hizmetSekli") or "")
         services[service] = services.get(service, 0) + 1
@@ -315,11 +317,14 @@ def build(rows, prices):
                 continue
             counts[(kind, power)] = counts.get((kind, power), 0) + 1
             best[kind] = max(best.get(kind, 0), power)
-        if "ccs" not in best and "chademo" not in best:
-            continue  # yalnızca DC hızlı şarj: yol üstünde AC ile şarj saatler sürer
+        has_dc = "ccs" in best or "chademo" in best
+        if not has_dc and "ac" not in best:
+            continue
         operator = (row.get("marka") or row.get("sarjAgiIsletmecisiUnvan") or "").strip()
         price_key, price = match_price(operator + " " + str(row.get("sarjAgiIsletmecisiUnvan") or ""), prices)
-        if price_key is None:
+        if not has_dc:
+            pass  # eşleşme raporu yalnızca DC istasyonları sayar
+        elif price_key is None:
             unmatched[operator] = unmatched.get(operator, 0) + 1
         else:
             label = f"{operator} -> {price_key}"
@@ -341,18 +346,22 @@ def build(rows, prices):
             tags["charge:ccs_kw"] = f"{best['ccs']:g}"
         if "chademo" in best:
             tags["charge:chademo_kw"] = f"{best['chademo']:g}"
-        if price:
+        if "ac" in best:
+            tags["charge:ac_kw"] = f"{best['ac']:g}"
+        # Fiyat tablosu DC liste fiyatıdır; yalnızca AC'li istasyona yazılmaz.
+        if price and has_dc:
             tags["charge:price"] = f"{price:g}"
-        elements.append({"type": "epdk", "id": numeric_id(row.get("sarjIstasyonuNo")), "lat": lat, "lon": lon, "tags": tags})
+        (elements if has_dc else ac_elements).append({"type": "epdk", "id": numeric_id(row.get("sarjIstasyonuNo")), "lat": lat, "lon": lon, "tags": tags})
     elements.sort(key=lambda element: element["id"])
+    ac_elements.sort(key=lambda element: element["id"])
     report = {
-        "rows": len(rows), "dc_public": len(elements), "hizmetSekli": services, "socket_kinds": kinds,
+        "rows": len(rows), "dc_public": len(elements), "ac_only_public": len(ac_elements), "hizmetSekli": services, "socket_kinds": kinds,
         "swapped_coordinates": swapped,
         "dropped_misplaced": misplaced,
         "matched_operators": sorted(matched.items(), key=lambda item: -item[1])[:40],
         "unmatched_operators": sorted(unmatched.items(), key=lambda item: -item[1])[:20],
     }
-    return elements, report
+    return elements, report, ac_elements
 
 
 def rows_of(raw):
@@ -398,10 +407,13 @@ def selftest():
         {"sarjIstasyonuNo": "ŞRJ/1004", "hizmetSekli": "Halka Açık", "marka": "ZES", "enlem": 0, "boylam": 0,
          "soketler": [{"soketTuru": "DC_CCS", "soketGucu": 60}]},
     ]
-    elements, report = build(rows, prices)
+    elements, report, ac_only = build(rows, prices)
     assert [e["id"] for e in elements] == sorted([1000, zlib.crc32(b"ABC")]), elements
     first = next(e for e in elements if e["id"] == 1000)
     assert first["lat"] == 41.17774 and first["tags"]["charge:ccs_kw"] == "180", first
+    assert first["tags"]["charge:ac_kw"] == "22", first
+    assert [e["id"] for e in ac_only] == [1002] and ac_only[0]["tags"]["charge:ac_kw"] == "22", ac_only
+    assert "charge:price" not in ac_only[0]["tags"] and "charge:ccs_kw" not in ac_only[0]["tags"], ac_only
     assert first["tags"]["charge:price"] == "16.49" and first["tags"]["addr:city"] == "Arnavutköy", first
     assert "CCS 180 kW ×2" in first["tags"]["charge:info"] and "Yeşil enerji" in first["tags"]["charge:info"]
     assert first["tags"]["operator"] == "ZES" and first["tags"]["charge:info"].startswith("ZES · ")
@@ -445,10 +457,16 @@ def main(argv):
     else:
         raw = fetch()
         io.open(output + ".raw.json", "wb").write(raw)
-    elements, report = build(rows_of(raw), load_prices())
+    elements, report, ac_only = build(rows_of(raw), load_prices())
     print(json.dumps(report, ensure_ascii=False, indent=1))
     write(output, elements)
     print(len(elements), "şarj istasyonu yazıldı")
+    # İkinci dosya adı verilirse yalnızca AC'li istasyonlar oraya yazılır (aynı EPDK cevabından;
+    # servis kotası saatte ~1 çağrı olduğu için ikinci kez istek atılmaz).
+    positional = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] != "--raw")]
+    if len(positional) > 1:
+        write(positional[1], ac_only)
+        print(len(ac_only), "AC şarj istasyonu yazıldı")
 
 
 if __name__ == "__main__":

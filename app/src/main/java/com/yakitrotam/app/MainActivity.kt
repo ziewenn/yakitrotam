@@ -76,6 +76,13 @@ class MainActivity : ComponentActivity() {
                     preferences = TripPreferences(applicationContext),
                     onPlanReady = { ReviewPrompt.recordPlan(applicationContext) },
                     // Şarj istasyonlarının canlı yedeği yok: yalnızca EPDK'dan üretilen hazır liste.
+                    acStationRepository = GasStationRepository(
+                        OverpassStationSource(
+                            fixedEndpoints = emptyList(),
+                            datasetCache = File(cacheDir, "chargers-ac.json"),
+                            datasetUrl = { Endpoints.chargersAc }
+                        )
+                    ),
                     evStationRepository = GasStationRepository(
                         OverpassStationSource(
                             fixedEndpoints = emptyList(),
@@ -175,6 +182,7 @@ class MainActivity : ComponentActivity() {
                                 startElectric = uiState.vehicleProfile.isElectric,
                                 startCenter = uiState.origin.latLng,
                                 loadStations = { viewModel.mapStations(it) },
+                                loadAcStations = { viewModel.mapAcStations() },
                                 locate = { viewModel.currentLocationOrNull(this@MainActivity) },
                                 onNavigate = { GoogleMapsLauncher.launchTurnByTurn(this@MainActivity, it.latitude, it.longitude) },
                                 onPlanTo = {

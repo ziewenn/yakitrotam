@@ -114,7 +114,7 @@ without waiting for a store update. Only `https` addresses are accepted.
 - Pick a location on the map for places without an address.
 - Share the plan as plain text (WhatsApp, SMS, email).
 - All stops are passed to Google Maps as waypoints.
-- Map tab: nearby fuel or charging stations (150+ kW filter); tapping one shows
+- Map tab: nearby fuel or charging stations (DC / AC and 150+ kW filters); tapping one shows
   power, price, directions and "plan a route". With location permission the map
   opens around the driver.
 - Bridge and motorway tolls (estimated, passenger car): Bosphorus bridges,
